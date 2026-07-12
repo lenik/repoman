@@ -16,7 +16,8 @@ lrm \- 管理与测速 Linux 发行版软件源镜像
 .RI $XDG_CONFIG_HOME /repoman/lrm/ 。
 首次运行且该目录尚不存在时，
 .B lrm
-会为检测到的发行版族（Debian、RPM 或 Arch）写入内置默认镜像。
+会为检测到的发行版族（Debian、RPM 或 Arch）写入内置默认镜像（含 163、
+阿里云等公共镜像，视发行版而定）。
 .SH 选项
 .TP
 .BR \-v ", " \-\-verbose
@@ -98,7 +99,10 @@ RPM 应用选项（默认仅 BaseOS）：
 .BR getbar (1)
 并行从各镜像下载元数据文件并按得分排序。默认对探测 URL 运行
 .RB getbar " -c -d2 -p1 -w3 -s30m -i.1 -q"。
-得分按 3 MiB 参考文件的等效字节/秒计算，可用
+得分按 3 MiB 参考文件的等效字节/秒计算：
+.RI ref / ( offset + ref/bps ) ，
+连接延迟对快镜像影响更大，对慢速传输本身影响较小。
+若吞吐在达到参考大小前下降，线性拟合斜率会降低得分。可用
 .BR \-\-ref
 或
 .IR LRM_BWTEST_REF_BYTES
@@ -133,23 +137,24 @@ RPM 应用选项（默认仅 BaseOS）：
 .SH 文件
 .TP
 .I ~/.config/repoman/lrm/mirrors
-Tab-separated mirror database.
+制表符分隔的镜像库：
+.IR 别名 ", " 优先级 ", " url 。
 .TP
 .I ~/.config/repoman/lrm/default
-Currently selected mirror alias.
+当前所选镜像别名。
 .TP
 .I ~/.config/repoman/lrm/health
-Last ping/bwtest result per mirror (
-.BR ok " or " bad ).
+各镜像上次 ping/bwtest 结果（
+.BR ok " 或 " bad ）。
 .TP
 .I /etc/apt/sources.list.d/lrm.sources
-Applied Debian/Ubuntu mirror (deb822 format).
+已应用的 Debian/Ubuntu 镜像（deb822 格式）。
 .TP
 .I /etc/yum.repos.d/lrm.repo
-Applied RPM-family mirror.
+已应用的 RPM 系镜像。
 .TP
 .I /etc/pacman.d/mirrorlist
-Applied Arch mirror list.
+已应用的 Arch 镜像列表。
 .SH 示例
 .TP
 添加镜像并列出：
