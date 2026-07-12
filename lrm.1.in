@@ -18,9 +18,13 @@ Mirror definitions are stored under
 .RI $XDG_CONFIG_HOME /repoman/lrm/ .
 On the first run, when that file does not exist yet,
 .B lrm
-creates it with built-in default mirrors for the detected distribution family
-(Debian, RPM, or Arch), including public mirrors such as 163 and Aliyun where
+creates it with built-in default mirrors for the selected distribution
+(or the detected host distribution when
+.BR \-o ", " \-\-distro
+is not used), including public mirrors such as 163 and Aliyun where
 available.
+Mirror lists are kept separately per distribution under
+.RI $XDG_CONFIG_HOME /repoman/lrm/ DISTRO / .
 .SH OPTIONS
 .TP
 .BR \-v ", " \-\-verbose
@@ -36,6 +40,20 @@ warnings, red errors).
 .TP
 .BR \-q ", " \-\-quiet
 Reduce logging verbosity.
+.TP
+.BR \-o ", " \-\-distro " " NAME
+Use package-manager backends and default mirrors for
+.IR NAME
+instead of detecting the host from
+.BR /etc/os-release .
+Examples:
+.BR debian ", " ubuntu ", " fedora ", " uos ", " deepin ", " kylin ", " openeuler ", " arch ", " rpm .
+Use
+.BR \-\-list\-distros
+for the full list.
+.TP
+.BR \-l ", " \-\-list\-distros
+Print all supported distribution names and exit successfully.
 .TP
 .BR \-h ", " \-\-help
 Print a usage summary and exit successfully.
@@ -152,16 +170,30 @@ to select a translation (e.g.
 .BR zh_CN ).
 .SH FILES
 .TP
-.I ~/.config/repoman/lrm/mirrors
-Tab-separated mirror database:
+.I ~/.config/repoman/lrm/DISTRO/mirrors
+Per-distribution tab-separated mirror database:
 .IR alias ", " priority ", " url .
+.IR DISTRO
+matches the effective distribution name (from
+.BR \-o ", " \-\-distro
+or host detection), e.g.
+.BR debian ", " ubuntu ", " fedora ", " openeuler ", " kylin .
+.TP
+.I ~/.config/repoman/lrm/DISTRO/default
+Currently selected mirror alias for that distribution.
+.TP
+.I ~/.config/repoman/lrm/DISTRO/health
+Last ping/bwtest result per mirror for that distribution (
+.BR ok " or " bad ).
+.TP
+.I ~/.config/repoman/lrm/mirrors
+Legacy flat mirror file; migrated into the per-distribution layout on first use.
 .TP
 .I ~/.config/repoman/lrm/default
-Currently selected mirror alias.
+Legacy default mirror file; migrated when present.
 .TP
 .I ~/.config/repoman/lrm/health
-Last ping/bwtest result per mirror (
-.BR ok " or " bad ).
+Legacy health file; migrated when present.
 .TP
 .I /etc/apt/sources.list.d/lrm.sources
 Applied Debian/Ubuntu mirror (deb822 format).
