@@ -1,0 +1,131 @@
+.TH lrm 1 "@PROJECT_YEAR@" "@PROJECT_VERSION@" "Benutzerbefehle"
+.SH NAME
+lrm \- Linux-Paketspiegel verwalten und testen
+.SH ÜBERSICHT
+.B lrm
+.RI [ OPTION ]...
+.IR BEFEHL
+.RI [ ARGUMENTE ]...
+.SH BESCHREIBUNG
+Speichert Spiegel-Aliase und URLs, testet per Ping oder HTTP-Download und wendet den gewählten Spiegel an.
+.PP
+Spiegeldefinitionen unter
+.RI $XDG_CONFIG_HOME /repoman/lrm/ .
+.SH OPTIONEN
+.TP
+.BR \-v ", " \-\-verbose
+Erhöht Protokollierung (wiederholbar). Farben pro Stufe am Terminal.
+.TP
+.BR \-q ", " \-\-quiet
+Weniger Protokollausgabe.
+.TP
+.BR \-h ", " \-\-help
+Hilfe anzeigen und beenden.
+.TP
+.B \-\-version
+Version anzeigen und beenden.
+.SH BEFEHLE
+.TP
+.B list
+Listet Spiegel als MARK [N] ALIAS.
+.TP
+.BR add " [[" \- PRIORITY "] | " \-p ", " \-\-priority " " N "] " ALIAS URL
+Spiegel hinzufügen oder aktualisieren (Priorität 100).
+.TP
+.BR remove " " ALIAS\|NUM
+Spiegel per Alias oder Listennummer entfernen.
+.TP
+.BR use " [" \-c ", " \-\-config\-only "] [" apply opts "] " ALIAS\|NUM
+Standardspiegel setzen und anwenden.
+.PP
+Debian-Optionen (Standard
+.BR \-\-all ):
+.BR main ", " contrib ", " non-free ", " non-free-firmware
+Komponenten,
+.BR deb\-src ,
+updates, backports, security. Flags:
+.BR \-a ", " \-\-all ", " \-s ", " \-\-src ", " \-u ", " \-\-updates ", " \-b ", " \-\-backports ", " \-\-security ", " \-\-suite .
+.PP
+RPM-Optionen (Standard nur BaseOS):
+.BR \-e ", " \-\-everything
+aktiviert BaseOS, AppStream und CRB/PowerTools;
+.BR \-E ", " \-\-epel
+fügt EPEL hinzu;
+.BR \-a ", " \-\-all
+alles inkl. EPEL. Auch
+.BR \-\-releasever ", " \-\-arch ", " \-\-appstream ", " \-\-crb ", " \-\-powertools ", " \-\-minimal .
+nutzen dieselben Anwendeoptionen wie
+.BR use .
+.PP
+Mit
+.B \-\-config\-only
+nur
+.I /etc/apt/sources.list.d/lrm.sources
+schreiben ohne
+.BR apt\-get " update".
+Listennummer oder Alias möglich.
+.TP
+.BR pingtest " [" \-n ", " \-\-count " " N "] [" \-W ", " \-\-timeout " " SEC "]"
+Paralleler Ping, sortiert nach Latenz (3 Zähler, 2 s Timeout).
+.TP
+.BR bwtest " [" \-\-ref " " BYTES "]"
+Paralleler Download-Test mit
+.BR getbar (1), sortiert nach Score.
+.TP
+.BR pingsel " [" apply opts "] [" \-n ", " \-\-count " " N "] [" \-W ", " \-\-timeout " " SEC "]"
+Führt
+.B pingtest
+aus und wendet besten Spiegel an (wie
+.BR use ).
+.TP
+.BR bwsel " [" apply opts "] [" \-\-ref " " BYTES "]"
+Führt
+.B bwtest
+aus und wendet besten Spiegel an (wie
+.BR use ).
+.TP
+.B help
+Hilfe anzeigen.
+.TP
+.B version
+Version anzeigen.
+.SH INTERNATIONALISIERUNG
+gettext (Domäne
+.BR lrm ). Sprache via
+.BR LANGUAGE " oder " LANG .
+.SH DATEIEN
+.TP
+.I ~/.config/repoman/lrm/mirrors
+Tab-separated mirror database.
+.TP
+.I ~/.config/repoman/lrm/default
+Currently selected mirror alias.
+.TP
+.I ~/.config/repoman/lrm/health
+Last ping/bwtest result per mirror (
+.BR ok " or " bad ).
+.TP
+.I /etc/apt/sources.list.d/lrm.sources
+Applied Debian/Ubuntu mirror (deb822 format).
+.TP
+.I /etc/yum.repos.d/lrm.repo
+Applied RPM-family mirror.
+.TP
+.I /etc/pacman.d/mirrorlist
+Applied Arch mirror list.
+.SH BEISPIELE
+.TP
+Spiegel hinzufügen und auflisten:
+.B lrm add -10 tuna https://mirrors.tuna.tsinghua.edu.cn/debian
+.br
+.B lrm add ustc https://mirrors.ustc.edu.cn/debian
+.br
+.B lrm list
+.TP
+Testen und schnellsten wählen:
+.B lrm bwsel
+.SH AUTOR
+@PROJECT_AUTHOR@ <@PROJECT_EMAIL@>
+.SH COPYRIGHT
+Copyright \(co @PROJECT_YEAR@.
+Lizenz AGPL-3.0-or-later.

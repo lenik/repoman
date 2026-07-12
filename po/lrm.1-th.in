@@ -1,0 +1,131 @@
+.TH lrm 1 "@PROJECT_YEAR@" "@PROJECT_VERSION@" "คำสั่งผู้ใช้"
+.SH ชื่อ
+lrm \- จัดการและทดสอบมิเรอร์แพ็กเกจ Linux
+.SH สรุป
+.B lrm
+.RI [ ตัวเลือก ]...
+.IR คำสั่ง
+.RI [ อาร์กิวเมนต์ ]...
+.SH คำอธิบาย
+เก็บชื่อและ URL มิเรอร์ ทดสอบด้วย ping หรือดาวน์โหลด HTTP แล้วนำมิเรอร์ที่เลือกไปใช้
+.PP
+นิยามมิเรอร์อยู่ที่
+.RI $XDG_CONFIG_HOME /repoman/lrm/ 
+.SH ตัวเลือก
+.TP
+.BR \-v ", " \-\-verbose
+เพิ่มระดับบันทึก (ทำซ้ำได้) มีสีตามระดับบนเทอร์มินัล
+.TP
+.BR \-q ", " \-\-quiet
+ลดบันทึก
+.TP
+.BR \-h ", " \-\-help
+แสดงวิธีใช้และออก
+.TP
+.B \-\-version
+แสดงเวอร์ชันและออก
+.SH คำสั่ง
+.TP
+.B list
+แสดงมิเรอร์เป็น MARK [N] ALIAS
+.TP
+.BR add " [[" \- PRIORITY "] | " \-p ", " \-\-priority " " N "] " ALIAS URL
+เพิ่มหรืออัปเดตมิเรอร์ (ลำดับความสำคัญ 100)
+.TP
+.BR remove " " ALIAS\|NUM
+ลบมิเรอร์ด้วยชื่อหรือหมายเลข
+.TP
+.BR use " [" \-c ", " \-\-config\-only "] [" apply opts "] " ALIAS\|NUM
+ตั้งมิเรอร์เริ่มต้นและนำไปใช้กับระบบ
+.PP
+ตัวเลือก Debian (ค่าเริ่มต้น
+.BR \-\-all ):
+.BR main ", " contrib ", " non-free ", " non-free-firmware
+ส่วนประกอบ
+.BR deb\-src ,
+updates backports security ฯลฯ
+.BR \-a ", " \-\-all ", " \-s ", " \-\-src ", " \-u ", " \-\-updates ", " \-b ", " \-\-backports ", " \-\-security ", " \-\-suite .
+.PP
+ตัวเลือก RPM (ค่าเริ่มต้น BaseOS เท่านั้น):
+.BR \-e ", " \-\-everything
+เปิด BaseOS AppStream CRB/PowerTools;
+.BR \-E ", " \-\-epel
+เพิ่ม EPEL;
+.BR \-a ", " \-\-all
+เปิดทั้งหมดรวม EPEL รวมถึง
+.BR \-\-releasever ", " \-\-arch ", " \-\-appstream ", " \-\-crb ", " \-\-powertools ", " \-\-minimal .
+ใช้ตัวเลือกเดียวกับ
+.BR use 
+.PP
+ใช้
+.B \-\-config\-only
+เขียนเฉพาะ
+.I /etc/apt/sources.list.d/lrm.sources
+โดยไม่รัน
+.BR apt\-get " update".
+ใช้หมายเลขหรือชื่อได้
+.TP
+.BR pingtest " [" \-n ", " \-\-count " " N "] [" \-W ", " \-\-timeout " " SEC "]"
+ping ขนาน เรียงตามความหน่วง (3 ครั้ง timeout 2 วินาที)
+.TP
+.BR bwtest " [" \-\-ref " " BYTES "]"
+ทดสอบดาวน์โหลดด้วย
+.BR getbar (1) เรียงตามคะแนน
+.TP
+.BR pingsel " [" apply opts "] [" \-n ", " \-\-count " " N "] [" \-W ", " \-\-timeout " " SEC "]"
+รัน
+.B pingtest
+แล้วใช้มิเรอร์ที่ดีที่สุด (ตัวเลือกเหมือน
+.BR use )
+.TP
+.BR bwsel " [" apply opts "] [" \-\-ref " " BYTES "]"
+รัน
+.B bwtest
+แล้วใช้มิเรอร์ที่ดีที่สุด (ตัวเลือกเหมือน
+.BR use )
+.TP
+.B help
+แสดงวิธีใช้
+.TP
+.B version
+แสดงเวอร์ชัน
+.SH การแปลภาษา
+gettext (โดเมน
+.BR lrm ) เลือกภาษาด้วย
+.BR LANGUAGE 
+.SH ไฟล์
+.TP
+.I ~/.config/repoman/lrm/mirrors
+Tab-separated mirror database.
+.TP
+.I ~/.config/repoman/lrm/default
+Currently selected mirror alias.
+.TP
+.I ~/.config/repoman/lrm/health
+Last ping/bwtest result per mirror (
+.BR ok " or " bad ).
+.TP
+.I /etc/apt/sources.list.d/lrm.sources
+Applied Debian/Ubuntu mirror (deb822 format).
+.TP
+.I /etc/yum.repos.d/lrm.repo
+Applied RPM-family mirror.
+.TP
+.I /etc/pacman.d/mirrorlist
+Applied Arch mirror list.
+.SH ตัวอย่าง
+.TP
+เพิ่มและแสดงรายการ:
+.B lrm add -10 tuna https://mirrors.tuna.tsinghua.edu.cn/debian
+.br
+.B lrm add ustc https://mirrors.ustc.edu.cn/debian
+.br
+.B lrm list
+.TP
+ทดสอบและเลือกที่เร็วที่สุด:
+.B lrm bwsel
+.SH ผู้เขียน
+@PROJECT_AUTHOR@ <@PROJECT_EMAIL@>
+.SH ลิขสิทธิ์
+Copyright \(co @PROJECT_YEAR@.
+สัญญาอนุญาต AGPL-3.0-or-later

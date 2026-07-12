@@ -1,0 +1,130 @@
+.TH lrm 1 "@PROJECT_YEAR@" "@PROJECT_VERSION@" "사용자 명령"
+.SH 이름
+lrm \- Linux 배포판 패키지 미러 관리 및 벤치마크
+.SH 개요
+.B lrm
+.RI [ 옵션 ]...
+.IR 명령
+.RI [ 인수 ]...
+.SH 설명
+미러 별칭과 URL을 저장하고 ping 또는 HTTP 다운로드 테스트로 벤치마크한 뒤 패키지 관리자에 적용합니다.
+.PP
+미러 정의는
+.RI $XDG_CONFIG_HOME /repoman/lrm/ 에 저장됩니다.
+.SH 옵션
+.TP
+.BR \-v ", " \-\-verbose
+로그 상세도를 높입니다. 터미널에서는 수준별 색상을 사용합니다.
+.TP
+.BR \-q ", " \-\-quiet
+로그 출력을 줄입니다.
+.TP
+.BR \-h ", " \-\-help
+도움말을 표시하고 종료합니다.
+.TP
+.B \-\-version
+버전 정보를 표시하고 종료합니다.
+.SH 명령
+.TP
+.B list
+설정된 미러를 MARK [N] ALIAS 형식으로 나열합니다.
+.TP
+.BR add " [[" \- PRIORITY "] | " \-p ", " \-\-priority " " N "] " ALIAS URL
+미러를 추가하거나 갱신합니다(기본 우선순위 100).
+.TP
+.BR remove " " ALIAS\|NUM
+별칭 또는 목록 번호로 미러를 제거합니다.
+.TP
+.BR use " [" \-c ", " \-\-config\-only "] [" apply opts "] " ALIAS\|NUM
+기본 미러를 설정하고 시스템에 적용합니다.
+.PP
+Debian 적용 옵션(기본
+.BR \-\-all ):
+.BR main ", " contrib ", " non-free ", " non-free-firmware
+구성 요소,
+.BR deb\-src ,
+updates, backports, security 등. 플래그:
+.BR \-a ", " \-\-all ", " \-s ", " \-\-src ", " \-u ", " \-\-updates ", " \-b ", " \-\-backports ", " \-\-security ", " \-\-suite .
+.PP
+RPM 적용 옵션(기본 BaseOS만):
+.BR \-e ", " \-\-everything
+BaseOS, AppStream, CRB/PowerTools 활성화;
+.BR \-E ", " \-\-epel
+EPEL 추가;
+.BR \-a ", " \-\-all
+전체 및 EPEL 활성화. 또한
+.BR \-\-releasever ", " \-\-arch ", " \-\-appstream ", " \-\-crb ", " \-\-powertools ", " \-\-minimal .
+도
+.BR use " 와 동일한 적용 옵션을 사용합니다.
+.PP
+사용
+.B \-\-config\-only
+는
+.I /etc/apt/sources.list.d/lrm.sources
+만 쓰고
+.BR apt\-get " update".
+목록 번호 또는 별칭을 사용할 수 있습니다.
+.TP
+.BR pingtest " [" \-n ", " \-\-count " " N "] [" \-W ", " \-\-timeout " " SEC "]"
+미러를 병렬 ping하고 지연 순으로 표시합니다(기본 3회, 제한 2초).
+.TP
+.BR bwtest " [" \-\-ref " " BYTES "]"
+.BR getbar (1)
+로 병렬 다운로드 테스트 후 점수 순으로 표시합니다.
+.TP
+.BR pingsel " [" apply opts "] [" \-n ", " \-\-count " " N "] [" \-W ", " \-\-timeout " " SEC "]"
+.B pingtest
+후 최적 미러 적용(
+.BR use " 와 동일 옵션).
+.TP
+.BR bwsel " [" apply opts "] [" \-\-ref " " BYTES "]"
+.B bwtest
+후 최적 미러 적용(
+.BR use " 와 동일 옵션).
+.TP
+.B help
+도움말 표시.
+.TP
+.B version
+버전 표시.
+.SH 국제화
+gettext(도메인
+.BR lrm ) 사용.
+.BR LANGUAGE
+등으로 언어 선택.
+.SH 파일
+.TP
+.I ~/.config/repoman/lrm/mirrors
+Tab-separated mirror database.
+.TP
+.I ~/.config/repoman/lrm/default
+Currently selected mirror alias.
+.TP
+.I ~/.config/repoman/lrm/health
+Last ping/bwtest result per mirror (
+.BR ok " or " bad ).
+.TP
+.I /etc/apt/sources.list.d/lrm.sources
+Applied Debian/Ubuntu mirror (deb822 format).
+.TP
+.I /etc/yum.repos.d/lrm.repo
+Applied RPM-family mirror.
+.TP
+.I /etc/pacman.d/mirrorlist
+Applied Arch mirror list.
+.SH 예제
+.TP
+미러 추가 및 목록:
+.B lrm add -10 tuna https://mirrors.tuna.tsinghua.edu.cn/debian
+.br
+.B lrm add ustc https://mirrors.ustc.edu.cn/debian
+.br
+.B lrm list
+.TP
+벤치마크 후 최적 선택:
+.B lrm bwsel
+.SH 저자
+@PROJECT_AUTHOR@ <@PROJECT_EMAIL@>
+.SH 저작권
+Copyright \(co @PROJECT_YEAR@.
+라이선스 AGPL-3.0-or-later.

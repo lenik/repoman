@@ -1,0 +1,131 @@
+.TH lrm 1 "@PROJECT_YEAR@" "@PROJECT_VERSION@" "Comandi utente"
+.SH NOME
+lrm \- gestire e valutare mirror di repository Linux
+.SH SINTESI
+.B lrm
+.RI [ OPZIONE ]...
+.IR COMANDO
+.RI [ ARGOMENTI ]...
+.SH DESCRIZIONE
+Memorizza alias e URL dei mirror, li valuta con ping o download HTTP e applica il mirror scelto.
+.PP
+I mirror sono in
+.RI $XDG_CONFIG_HOME /repoman/lrm/ .
+.SH OPZIONI
+.TP
+.BR \-v ", " \-\-verbose
+Aumenta la verbosità (ripetibile). Colori per livello su terminale.
+.TP
+.BR \-q ", " \-\-quiet
+Riduce i log.
+.TP
+.BR \-h ", " \-\-help
+Mostra l'aiuto e termina.
+.TP
+.B \-\-version
+Mostra la versione e termina.
+.SH COMANDI
+.TP
+.B list
+Elenca i mirror come MARK [N] ALIAS.
+.TP
+.BR add " [[" \- PRIORITY "] | " \-p ", " \-\-priority " " N "] " ALIAS URL
+Aggiunge o aggiorna un mirror (priorità 100).
+.TP
+.BR remove " " ALIAS\|NUM
+Rimuove un mirror per alias o numero.
+.TP
+.BR use " [" \-c ", " \-\-config\-only "] [" apply opts "] " ALIAS\|NUM
+Imposta il mirror predefinito e lo applica al sistema.
+.PP
+Opzioni Debian (default
+.BR \-\-all ):
+.BR main ", " contrib ", " non-free ", " non-free-firmware
+componenti,
+.BR deb\-src ,
+updates, backports, security. Flag:
+.BR \-a ", " \-\-all ", " \-s ", " \-\-src ", " \-u ", " \-\-updates ", " \-b ", " \-\-backports ", " \-\-security ", " \-\-suite .
+.PP
+Opzioni RPM (solo BaseOS di default):
+.BR \-e ", " \-\-everything
+abilita BaseOS, AppStream e CRB/PowerTools;
+.BR \-E ", " \-\-epel
+aggiunge EPEL;
+.BR \-a ", " \-\-all
+tutto incluso EPEL. Anche
+.BR \-\-releasever ", " \-\-arch ", " \-\-appstream ", " \-\-crb ", " \-\-powertools ", " \-\-minimal .
+accettano le stesse opzioni di
+.BR use .
+.PP
+Con
+.B \-\-config\-only
+scrive solo
+.I /etc/apt/sources.list.d/lrm.sources
+senza eseguire
+.BR apt\-get " update".
+Numero elenco o alias.
+.TP
+.BR pingtest " [" \-n ", " \-\-count " " N "] [" \-W ", " \-\-timeout " " SEC "]"
+Ping parallelo ordinato per latenza (3 tentativi, timeout 2 s).
+.TP
+.BR bwtest " [" \-\-ref " " BYTES "]"
+Test download parallelo con
+.BR getbar (1), ordinato per punteggio.
+.TP
+.BR pingsel " [" apply opts "] [" \-n ", " \-\-count " " N "] [" \-W ", " \-\-timeout " " SEC "]"
+Esegue
+.B pingtest
+e applica il miglior mirror (opzioni come
+.BR use ).
+.TP
+.BR bwsel " [" apply opts "] [" \-\-ref " " BYTES "]"
+Esegue
+.B bwtest
+e applica il miglior mirror (opzioni come
+.BR use ).
+.TP
+.B help
+Mostra l'aiuto.
+.TP
+.B version
+Mostra la versione.
+.SH INTERNAZIONALIZZAZIONE
+gettext (dominio
+.BR lrm ). Lingua con
+.BR LANGUAGE " o " LANG .
+.SH FILE
+.TP
+.I ~/.config/repoman/lrm/mirrors
+Tab-separated mirror database.
+.TP
+.I ~/.config/repoman/lrm/default
+Currently selected mirror alias.
+.TP
+.I ~/.config/repoman/lrm/health
+Last ping/bwtest result per mirror (
+.BR ok " or " bad ).
+.TP
+.I /etc/apt/sources.list.d/lrm.sources
+Applied Debian/Ubuntu mirror (deb822 format).
+.TP
+.I /etc/yum.repos.d/lrm.repo
+Applied RPM-family mirror.
+.TP
+.I /etc/pacman.d/mirrorlist
+Applied Arch mirror list.
+.SH ESEMPI
+.TP
+Aggiungere e elencare:
+.B lrm add -10 tuna https://mirrors.tuna.tsinghua.edu.cn/debian
+.br
+.B lrm add ustc https://mirrors.ustc.edu.cn/debian
+.br
+.B lrm list
+.TP
+Testare e scegliere il più veloce:
+.B lrm bwsel
+.SH AUTORE
+@PROJECT_AUTHOR@ <@PROJECT_EMAIL@>
+.SH COPYRIGHT
+Copyright \(co @PROJECT_YEAR@.
+Licenza AGPL-3.0-or-later.

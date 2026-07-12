@@ -1,0 +1,131 @@
+.TH lrm 1 "@PROJECT_YEAR@" "@PROJECT_VERSION@" "Commandes utilisateur"
+.SH NOM
+lrm \- gérer et évaluer les miroirs de dépôts Linux
+.SH SYNOPSIS
+.B lrm
+.RI [ OPTION ]...
+.IR COMMANDE
+.RI [ ARGUMENTS ]...
+.SH DESCRIPTION
+Stocke alias et URL de miroirs, les évalue par ping ou téléchargement HTTP, puis applique le miroir choisi.
+.PP
+Les miroirs sont stockés sous
+.RI $XDG_CONFIG_HOME /repoman/lrm/ .
+.SH OPTIONS
+.TP
+.BR \-v ", " \-\-verbose
+Augmente la verbosité des journaux (répétable). Couleurs par niveau sur terminal.
+.TP
+.BR \-q ", " \-\-quiet
+Réduit les journaux.
+.TP
+.BR \-h ", " \-\-help
+Affiche l'aide et quitte.
+.TP
+.B \-\-version
+Affiche la version et quitte.
+.SH COMMANDES
+.TP
+.B list
+Liste les miroirs sous la forme MARK [N] ALIAS.
+.TP
+.BR add " [[" \- PRIORITY "] | " \-p ", " \-\-priority " " N "] " ALIAS URL
+Ajoute ou met à jour un miroir (priorité 100 par défaut).
+.TP
+.BR remove " " ALIAS\|NUM
+Supprime un miroir par alias ou numéro.
+.TP
+.BR use " [" \-c ", " \-\-config\-only "] [" apply opts "] " ALIAS\|NUM
+Définit le miroir par défaut et l'applique au système.
+.PP
+Options Debian (défaut
+.BR \-\-all ):
+.BR main ", " contrib ", " non-free ", " non-free-firmware
+composants,
+.BR deb\-src ,
+updates, backports, security. Options:
+.BR \-a ", " \-\-all ", " \-s ", " \-\-src ", " \-u ", " \-\-updates ", " \-b ", " \-\-backports ", " \-\-security ", " \-\-suite .
+.PP
+Options RPM (BaseOS seul par défaut):
+.BR \-e ", " \-\-everything
+active BaseOS, AppStream et CRB/PowerTools;
+.BR \-E ", " \-\-epel
+ajoute EPEL;
+.BR \-a ", " \-\-all
+tout active y compris EPEL. Aussi
+.BR \-\-releasever ", " \-\-arch ", " \-\-appstream ", " \-\-crb ", " \-\-powertools ", " \-\-minimal .
+acceptent les mêmes options que
+.BR use .
+.PP
+Avec
+.B \-\-config\-only
+écrit seulement
+.I /etc/apt/sources.list.d/lrm.sources
+sans lancer
+.BR apt\-get " update".
+Numéro de liste ou alias accepté.
+.TP
+.BR pingtest " [" \-n ", " \-\-count " " N "] [" \-W ", " \-\-timeout " " SEC "]"
+Ping parallèle trié par latence (3 essais, 2 s par défaut).
+.TP
+.BR bwtest " [" \-\-ref " " BYTES "]"
+Test de téléchargement parallèle via
+.BR getbar (1), tri par score.
+.TP
+.BR pingsel " [" apply opts "] [" \-n ", " \-\-count " " N "] [" \-W ", " \-\-timeout " " SEC "]"
+Lance
+.B pingtest
+et applique le meilleur miroir (options comme
+.BR use ).
+.TP
+.BR bwsel " [" apply opts "] [" \-\-ref " " BYTES "]"
+Lance
+.B bwtest
+et applique le meilleur miroir (options comme
+.BR use ).
+.TP
+.B help
+Affiche l'aide.
+.TP
+.B version
+Affiche la version.
+.SH INTERNATIONALISATION
+Messages via gettext (domaine
+.BR lrm ). Langue avec
+.BR LANGUAGE " ou " LANG .
+.SH FICHIERS
+.TP
+.I ~/.config/repoman/lrm/mirrors
+Tab-separated mirror database.
+.TP
+.I ~/.config/repoman/lrm/default
+Currently selected mirror alias.
+.TP
+.I ~/.config/repoman/lrm/health
+Last ping/bwtest result per mirror (
+.BR ok " or " bad ).
+.TP
+.I /etc/apt/sources.list.d/lrm.sources
+Applied Debian/Ubuntu mirror (deb822 format).
+.TP
+.I /etc/yum.repos.d/lrm.repo
+Applied RPM-family mirror.
+.TP
+.I /etc/pacman.d/mirrorlist
+Applied Arch mirror list.
+.SH EXEMPLES
+.TP
+Ajouter et lister:
+.B lrm add -10 tuna https://mirrors.tuna.tsinghua.edu.cn/debian
+.br
+.B lrm add ustc https://mirrors.ustc.edu.cn/debian
+.br
+.B lrm list
+.TP
+Mesurer et choisir le plus rapide:
+.B lrm bwsel
+.SH AUTEUR
+@PROJECT_AUTHOR@ <@PROJECT_EMAIL@>
+.SH COPYRIGHT
+Copyright \(co @PROJECT_YEAR@.
+Licence AGPL-3.0-or-later.

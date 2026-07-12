@@ -1,0 +1,168 @@
+.TH lrm 1 "@PROJECT_YEAR@" "@PROJECT_VERSION@" "用户命令"
+.SH 名称
+lrm \- 管理与测速 Linux 发行版软件源镜像
+.SH 概要
+.B lrm
+.RI [ 选项 ]...
+.IR 命令
+.RI [ 参数 ]...
+.SH 描述
+保存镜像别名与 URL，通过 ping 或 HTTP 下载测试进行测速，并将所选镜像应用到本地
+包管理器配置。支持的发行版族由
+.BR /etc/os-release
+检测：Debian/Ubuntu（apt）、RHEL 系（dnf/yum）、Arch（pacman）。
+.PP
+镜像定义保存在
+.RI $XDG_CONFIG_HOME /repoman/lrm/ 。
+首次运行且该目录尚不存在时，
+.B lrm
+会为检测到的发行版族（Debian、RPM 或 Arch）写入内置默认镜像。
+.SH 选项
+.TP
+.BR \-v ", " \-\-verbose
+提高日志详细程度，可重复
+.RB ( \-vv ", " \-vvv ", " \-vvvv ) ：
+1 级记录各镜像测试，2 级记录路径与权限提升，3 级记录测量值与命令，4 级记录外部工具输出。
+当标准错误为终端且 terminfo 可用时，按级别着色（绿色进度、青/蓝/洋红/灰色详细、黄色警告、红色错误）。
+.TP
+.BR \-q ", " \-\-quiet
+减少日志输出。
+.TP
+.BR \-h ", " \-\-help
+显示用法摘要并退出。
+.TP
+.B \-\-version
+显示版本信息并退出。
+.SH 命令
+.TP
+.B list
+列出已配置镜像，格式为
+.IR 标记 " [" N "] " 别名 。
+标记为
+.BR * "（已选）、" \- "（上次测试失败）、" ? "（未测试）或两空格。
+.RB N
+为
+.BR use " 与 " remove
+接受的一基序号。加
+.BR \-p " 或 " \-\-priority
+时同时显示优先级与 URL。
+.TP
+.BR add " [[" \- PRIORITY "] | " \-p ", " \-\-priority " " N "] " ALIAS URL
+添加或更新镜像。优先级可用
+.BR \- N
+写在别名前，或用
+.BR \-p
+指定（默认 100，数值越小在列表中越靠前）。
+.TP
+.BR remove " " ALIAS\|NUM
+按别名或列表序号移除镜像。
+.TP
+.BR use " [" \-c ", " \-\-config\-only "] [" apply opts "] " ALIAS\|NUM
+设置默认镜像并应用到系统包管理器。
+.PP
+Debian 应用选项（默认
+.BR \-\-all ):
+.BR main ", " contrib ", " non-free ", " non-free-firmware
+组件、
+.BR deb\-src ,
+suite-updates、backports 与 security 条目。标志包括
+.BR \-a ", " \-\-all ", " \-s ", " \-\-src ", " \-u ", " \-\-updates ", " \-b ", " \-\-backports ", " \-\-security ", " \-\-suite .
+.PP
+RPM 应用选项（默认仅 BaseOS）：
+.BR \-e ", " \-\-everything
+启用 BaseOS、AppStream 与 CRB/PowerTools；
+.BR \-E ", " \-\-epel
+添加 EPEL；
+.BR \-a ", " \-\-all
+启用全部并包含 EPEL。另有
+.BR \-\-releasever ", " \-\-arch ", " \-\-appstream ", " \-\-crb ", " \-\-powertools ", " \-\-minimal .
+相同的应用选项也适用于
+.BR pingsel " 与 " bwsel 。
+.PP
+使用
+.B \-\-config\-only
+仅写入
+.I /etc/apt/sources.list.d/lrm.sources
+，不运行
+.BR apt\-get " update".
+可使用列表序号（如
+.B 3
+）或别名（如
+.BR tuna ）。
+.TP
+.BR pingtest " [" \-n ", " \-\-count " " N "] [" \-W ", " \-\-timeout " " SEC "]"
+并行 ping 各镜像主机，按延迟与丢包率排序（默认次数 3，超时 2 秒）。
+.TP
+.BR bwtest " [" \-\-ref " " BYTES "]"
+使用
+.BR getbar (1)
+并行从各镜像下载元数据文件并按得分排序。默认对探测 URL 运行
+.RB getbar " -c -d2 -p1 -w3 -s30m -i.1 -q"。
+得分按 3 MiB 参考文件的等效字节/秒计算，可用
+.BR \-\-ref
+或
+.IR LRM_BWTEST_REF_BYTES
+覆盖参考大小。
+.TP
+.BR pingsel " [" apply opts "] [" \-n ", " \-\-count " " N "] [" \-W ", " \-\-timeout " " SEC "]"
+执行
+.B pingtest
+并应用最佳镜像（与
+.BR use " 相同的应用选项）。
+.TP
+.BR bwsel " [" apply opts "] [" \-\-ref " " BYTES "]"
+执行
+.B bwtest
+并应用最佳镜像（与
+.BR use " 相同的应用选项）。
+.TP
+.B help
+显示用法。
+.TP
+.B version
+显示版本。
+.SH 国际化
+用户可见消息使用 gettext（文本域
+.BR lrm ）。
+消息目录按源码
+.I po/
+、构建目录、安装 locale 目录顺序查找。通过
+.BR LANGUAGE "、" LC_ALL " 或 " LANG
+选择语言（如
+.BR zh_CN ）。
+.SH 文件
+.TP
+.I ~/.config/repoman/lrm/mirrors
+Tab-separated mirror database.
+.TP
+.I ~/.config/repoman/lrm/default
+Currently selected mirror alias.
+.TP
+.I ~/.config/repoman/lrm/health
+Last ping/bwtest result per mirror (
+.BR ok " or " bad ).
+.TP
+.I /etc/apt/sources.list.d/lrm.sources
+Applied Debian/Ubuntu mirror (deb822 format).
+.TP
+.I /etc/yum.repos.d/lrm.repo
+Applied RPM-family mirror.
+.TP
+.I /etc/pacman.d/mirrorlist
+Applied Arch mirror list.
+.SH 示例
+.TP
+添加镜像并列出：
+.B lrm add -10 tuna https://mirrors.tuna.tsinghua.edu.cn/debian
+.br
+.B lrm add ustc https://mirrors.ustc.edu.cn/debian
+.br
+.B lrm list
+.TP
+测速并选择最快镜像：
+.B lrm bwsel
+.SH 作者
+@PROJECT_AUTHOR@ <@PROJECT_EMAIL@>
+.SH 版权
+Copyright \(co @PROJECT_YEAR@.
+许可证 AGPL-3.0-or-later。
