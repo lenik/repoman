@@ -1,0 +1,270 @@
+#!/bin/bash
+# Copyright (C) 2026 Lenik <repoman@bodz.net>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+set -euo pipefail
+
+DRM_NAME=drm
+DRM_VERSION=@PROJECT_VERSION@
+DRM_TEXTDOMAIN=@DRM_TEXTDOMAIN@
+DRM_INSTALL_LOCALEDIR=@DRM_INSTALL_LOCALEDIR@
+DRM_SOURCE_LOCALEDIR=@DRM_SOURCE_LOCALEDIR@
+DRM_BUILD_LOCALEDIR=@DRM_BUILD_LOCALEDIR@
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -f "$SCRIPT_DIR/lib-drm/common.sh" ]]; then
+    LIB_DIR="$SCRIPT_DIR/lib-drm"
+elif [[ -n "${DRM_LIB_DIR:-}" ]]; then
+    LIB_DIR="$DRM_LIB_DIR"
+else
+    for candidate in \
+        "/usr/share/repoman/drm/lib" \
+        "/usr/local/share/repoman/drm/lib"; do
+        if [[ -f "$candidate/common.sh" ]]; then
+            LIB_DIR="$candidate"
+            break
+        fi
+    done
+fi
+
+if [[ -z "${LIB_DIR:-}" && -f "$SCRIPT_DIR/../lib-drm/common.sh" ]]; then
+    LIB_DIR="$(cd "$SCRIPT_DIR/../lib-drm" && pwd)"
+fi
+
+if [[ -z "${LIB_DIR:-}" || ! -f "$LIB_DIR/common.sh" ]]; then
+    printf '%s: %s\n' "$DRM_NAME" "could not find drm library scripts" >&2
+    exit 1
+fi
+
+# shellcheck source=lib-drm/i18n.sh
+source "$LIB_DIR/i18n.sh"
+# shellcheck source=lib-drm/logstyle.sh
+source "$LIB_DIR/logstyle.sh"
+# shellcheck source=lib-drm/common.sh
+source "$LIB_DIR/common.sh"
+# shellcheck source=lib-drm/seed.sh
+source "$LIB_DIR/seed.sh"
+# shellcheck source=lib-drm/docker.sh
+source "$LIB_DIR/docker.sh"
+# shellcheck source=lib-drm/usage.sh
+source "$LIB_DIR/usage.sh"
+
+VERBOSE=0
+QUIET=0
+DRM_CONFIG_ONLY=0
+DRM_LIST_PRIORITY=0
+DRM_LIST_CHAR=0
+DRM_PING_COUNT=3
+DRM_PING_TIMEOUT=2
+
+version() {
+    printf '%s %s\n' "$DRM_NAME" "$DRM_VERSION"
+}
+
+cmd_list() {
+    DRM_LIST_PRIORITY=0
+    DRM_LIST_CHAR=0
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+        -p|--priority) DRM_LIST_PRIORITY=1; shift ;;
+        -c|--char) DRM_LIST_CHAR=1; shift ;;
+        -h|--help) usage; exit 0 ;;
+        -*) die "$(_ 'usage: drm list [-c|--char] [-p|--priority]')" ;;
+        *) die "$(_ 'usage: drm list [-c|--char] [-p|--priority]')" ;;
+        esac
+    done
+    export DRM_LIST_PRIORITY DRM_LIST_CHAR
+    ensure_mirrors
+    if ((${#MIRROR_ALIASES[@]} == 0)); then
+        log "$(_ 'no mirrors configured')"
+        return 0
+    fi
+    list_mirrors_sorted
+}
+
+cmd_add() {
+    local priority=100
+    local alias url
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+        -p|--priority)
+            [[ $# -ge 2 ]] || die "$(_ 'usage: drm add [[-PRIORITY] | -p|--priority N] ALIAS URL')"
+            priority="$2"
+            shift 2
+            ;;
+        -[0-9]*)
+            priority="${1#-}"
+            shift
+            ;;
+        -h|--help) usage; exit 0 ;;
+        -*) die "$(_ 'usage: drm add [[-PRIORITY] | -p|--priority N] ALIAS URL')" ;;
+        *) break ;;
+        esac
+    done
+    if [[ $# -ne 2 ]]; then
+        die "$(_ 'usage: drm add [[-PRIORITY] | -p|--priority N] ALIAS URL')"
+    fi
+    alias="$1"
+    url="$2"
+    validate_alias "$alias"
+    validate_url "$url"
+    invalidate_mirrors_cache
+    load_mirrors
+    mirror_add "$alias" "$priority" "$url"
+    save_mirrors
+    log "$(printf "$(_ 'added %s (priority %s) %s')" "$alias" "$priority" "$url")"
+}
+
+cmd_remove() {
+    local target
+    if [[ $# -ne 1 ]]; then
+        die "$(_ 'usage: drm remove ALIAS|NUM')"
+    fi
+    invalidate_mirrors_cache
+    load_mirrors
+    target="$(mirror_resolve_alias "$1")"
+    mirror_remove "$target"
+    save_mirrors
+    log "$(printf "$(_ 'removed %s')" "$target")"
+}
+
+cmd_use() {
+    parse_apply_opts "$@"
+    ensure_mirrors
+    mirror_use "$PARSE_APPLY_TARGET"
+}
+
+parse_pingtest_opts() {
+    DRM_PING_COUNT=3
+    DRM_PING_TIMEOUT=2
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+        -n|--count)
+            [[ $# -ge 2 ]] || die "$(_ 'usage: drm pingtest [-n|--count N] [-W|--timeout SEC]')"
+            DRM_PING_COUNT="$2"
+            shift 2
+            ;;
+        -W|--timeout)
+            [[ $# -ge 2 ]] || die "$(_ 'usage: drm pingtest [-n|--count N] [-W|--timeout SEC]')"
+            DRM_PING_TIMEOUT="$2"
+            shift 2
+            ;;
+        -h|--help) usage; exit 0 ;;
+        -*) die "$(_ 'usage: drm pingtest [-n|--count N] [-W|--timeout SEC]')" ;;
+        *) die "$(_ 'usage: drm pingtest [-n|--count N] [-W|--timeout SEC]')" ;;
+        esac
+    done
+    export DRM_PING_COUNT DRM_PING_TIMEOUT
+}
+
+parse_bwtest_opts() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+        --ref)
+            [[ $# -ge 2 ]] || die "$(_ 'usage: drm bwtest [--ref BYTES]')"
+            DRM_BWTEST_REF_BYTES="$2"
+            shift 2
+            ;;
+        -h|--help) usage; exit 0 ;;
+        -*) die "$(_ 'usage: drm bwtest [--ref BYTES]')" ;;
+        *) die "$(_ 'usage: drm bwtest [--ref BYTES]')" ;;
+        esac
+    done
+    export DRM_BWTEST_REF_BYTES
+}
+
+cmd_pingtest() {
+    parse_pingtest_opts "$@"
+    ensure_mirrors
+    run_pingtest
+}
+
+cmd_bwtest() {
+    parse_bwtest_opts "$@"
+    ensure_mirrors
+    run_bwtest
+}
+
+cmd_pingsel() {
+    parse_sel_opts "$@"
+    ensure_mirrors
+    local tmp best
+    tmp="$(mktemp "${TMPDIR:-/tmp}/drm-pingsel.XXXXXX")"
+    run_pingtest >"$tmp"
+    best="$(awk 'NR==1 {print $1}' "$tmp")"
+    rm -f "$tmp"
+    [[ -n "$best" ]] || die "$(_ 'no mirror passed ping test')"
+    mirror_use "$best"
+    log "$(printf "$(_ 'selected %s (lowest latency)')" "$best")"
+}
+
+cmd_bwsel() {
+    parse_sel_opts "$@"
+    ensure_mirrors
+    local tmp best
+    tmp="$(mktemp "${TMPDIR:-/tmp}/drm-bwsel.XXXXXX")"
+    run_bwtest >"$tmp"
+    best="$(awk 'NR==1 {print $1}' "$tmp")"
+    rm -f "$tmp"
+    [[ -n "$best" ]] || die "$(_ 'no mirror passed bandwidth test')"
+    mirror_use "$best"
+    log "$(printf "$(_ 'selected %s (highest score)')" "$best")"
+}
+
+main() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+        -v*)
+            local opt="${1#-}"
+            local i
+            for ((i = 0; i < ${#opt}; i++)); do
+                case "${opt:i:1}" in
+                v) VERBOSE=$((VERBOSE + 1)) ;;
+                *) die "$(printf "$(_ 'unknown option: -%s')" "$opt")" ;;
+                esac
+            done
+            shift
+            ;;
+        --verbose)
+            VERBOSE=$((VERBOSE + 1))
+            shift
+            ;;
+        -q|--quiet) QUIET=1; shift ;;
+        -h|--help) usage; exit 0 ;;
+        --version) version; exit 0 ;;
+        --) shift; break ;;
+        -*) die "$(printf "$(_ 'unknown option: %s')" "$1")" ;;
+        *) break ;;
+        esac
+    done
+
+    if [[ $# -lt 1 ]]; then
+        usage >&2
+        exit 1
+    fi
+
+    export VERBOSE QUIET
+    init_drm
+
+    local cmd="$1"
+    shift
+    vlog2 "command: $cmd $*"
+    case "$cmd" in
+    list) cmd_list "$@" ;;
+    add) cmd_add "$@" ;;
+    remove) cmd_remove "$@" ;;
+    use) cmd_use "$@" ;;
+    pingtest) cmd_pingtest "$@" ;;
+    bwtest) cmd_bwtest "$@" ;;
+    pingsel) cmd_pingsel "$@" ;;
+    bwsel) cmd_bwsel "$@" ;;
+    help) usage ;;
+    version) version ;;
+    *)
+        die "$(printf "$(_ 'unknown command: %s')" "$cmd")"
+        ;;
+    esac
+}
+
+main "$@"
