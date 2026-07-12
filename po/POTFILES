@@ -1,0 +1,8 @@
+lrm.in
+lib/common.sh
+lib/debian.sh
+lib/rpm.sh
+lib/arch.sh
+lib/detect.sh
+lib/seed.sh
+lib/usage.sh

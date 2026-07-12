@@ -1,0 +1,330 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: lrm\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-07-12 21:32+0800\n"
+"Language: de\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: lrm.in:70 lrm.in:71
+msgid "usage: lrm list [-p|--priority]"
+msgstr ""
+
+#: lrm.in:77 lib/common.sh:610 lib/common.sh:640
+msgid "no mirrors configured"
+msgstr ""
+
+#: lrm.in:90 lrm.in:99 lrm.in:104
+msgid "usage: lrm add [[-PRIORITY] | -p|--priority N] ALIAS URL"
+msgstr ""
+
+#: lrm.in:114
+msgid "added %s (priority %s) %s"
+msgstr ""
+
+#: lrm.in:120
+msgid "usage: lrm remove ALIAS|NUM"
+msgstr ""
+
+#: lrm.in:127
+msgid "removed %s"
+msgstr ""
+
+#: lrm.in:142 lrm.in:147 lrm.in:152 lrm.in:153
+msgid "usage: lrm pingtest [-n|--count N] [-W|--timeout SEC]"
+msgstr ""
+
+#: lrm.in:163 lrm.in:168 lrm.in:169
+msgid "usage: lrm bwtest [--ref BYTES]"
+msgstr ""
+
+#: lrm.in:195
+msgid "no mirror passed ping test"
+msgstr ""
+
+#: lrm.in:197
+msgid "selected %s (lowest latency)"
+msgstr ""
+
+#: lrm.in:208
+msgid "no mirror passed bandwidth test"
+msgstr ""
+
+#: lrm.in:210
+msgid "selected %s (highest score)"
+msgstr ""
+
+#: lrm.in:222
+msgid "unknown option: -%s"
+msgstr ""
+
+#: lrm.in:235 lib/debian.sh:91 lib/debian.sh:161 lib/rpm.sh:61 lib/rpm.sh:101
+#: lib/arch.sh:56 lib/arch.sh:96
+msgid "unknown option: %s"
+msgstr ""
+
+#: lrm.in:264
+msgid "unknown command: %s"
+msgstr ""
+
+#: lib/common.sh:68
+msgid "missing required commands: %s"
+msgstr ""
+
+#: lib/common.sh:103
+msgid "root privileges required to write %s (run as root or install sudo)"
+msgstr ""
+
+#: lib/common.sh:118
+msgid "root privileges required (run as root or install sudo)"
+msgstr ""
+
+#: lib/common.sh:272
+msgid "mirror number out of range: %s (1-%s)"
+msgstr ""
+
+#: lib/common.sh:278 lib/common.sh:331 lib/common.sh:414
+msgid "mirror not found: %s"
+msgstr ""
+
+#: lib/common.sh:284
+msgid "invalid alias: %s"
+msgstr ""
+
+#: lib/common.sh:291
+msgid "invalid mirror URL (must start with http:// or https://): %s"
+msgstr ""
+
+#: lib/common.sh:425
+msgid "using mirror %s (%s)"
+msgstr ""
+
+#: lib/debian.sh:83 lib/debian.sh:141
+msgid "usage: --suite SUITE"
+msgstr ""
+
+#: lib/debian.sh:89
+msgid "option %s belongs before the command name or on pingtest/bwtest"
+msgstr ""
+
+#: lib/debian.sh:93 lib/debian.sh:162 lib/rpm.sh:63 lib/rpm.sh:102
+#: lib/arch.sh:58 lib/arch.sh:97
+msgid "unexpected argument: %s"
+msgstr ""
+
+#: lib/debian.sh:100
+msgid ""
+"usage: lrm use [-c|--config-only] [-a|--all] [-s|--src] [-u|--updates] [-b|--"
+"backports] [--security] ALIAS|NUM"
+msgstr ""
+
+#: lib/debian.sh:146 lib/rpm.sh:86 lib/arch.sh:81
+msgid "usage: -n|--count N"
+msgstr ""
+
+#: lib/debian.sh:151 lib/rpm.sh:91 lib/arch.sh:86
+msgid "usage: -W|--timeout SEC"
+msgstr ""
+
+#: lib/debian.sh:156 lib/rpm.sh:96 lib/arch.sh:91
+msgid "usage: --ref BYTES"
+msgstr ""
+
+#: lib/debian.sh:241 lib/debian.sh:244
+msgid "warning: apt-get update failed"
+msgstr ""
+
+#: lib/debian.sh:268 lib/rpm.sh:46 lib/arch.sh:42
+msgid "wrote %s"
+msgstr ""
+
+#: lib/rpm.sh:58 lib/rpm.sh:83 lib/arch.sh:53 lib/arch.sh:78
+msgid "option %s is only supported on Debian-based systems"
+msgstr ""
+
+#: lib/rpm.sh:70 lib/arch.sh:65
+msgid "usage: lrm use [-c|--config-only] ALIAS|NUM"
+msgstr ""
+
+#: lib/arch.sh:40
+msgid "warning: pacman -Syy failed"
+msgstr ""
+
+#: lib/detect.sh:28
+msgid "unsupported distribution family: %s"
+msgstr ""
+
+#: lib/seed.sh:35
+msgid "no built-in default mirrors for distribution family: %s"
+msgstr ""
+
+#: lib/usage.sh:7
+msgid "Usage: lrm [OPTION]... COMMAND [ARGS]..."
+msgstr ""
+
+#: lib/usage.sh:9
+msgid "Manage distribution package mirrors and select the fastest one."
+msgstr ""
+
+#: lib/usage.sh:11
+msgid "Options:"
+msgstr ""
+
+#: lib/usage.sh:12
+msgid ""
+"  -v, --verbose      more logging (repeatable: -v tests, -vv paths, -vvv "
+"metrics, -vvvv trace)"
+msgstr ""
+
+#: lib/usage.sh:13
+msgid "  -q, --quiet        less logging"
+msgstr ""
+
+#: lib/usage.sh:14
+msgid "  -h, --help         show this help"
+msgstr ""
+
+#: lib/usage.sh:15
+msgid "      --version      show version"
+msgstr ""
+
+#: lib/usage.sh:17
+msgid "Commands:"
+msgstr ""
+
+#: lib/usage.sh:18
+msgid "  list [-p|--priority]"
+msgstr ""
+
+#: lib/usage.sh:19
+msgid ""
+"                     list mirrors: MARK [N] ALIAS (* selected, - bad, ? "
+"untested)"
+msgstr ""
+
+#: lib/usage.sh:20
+msgid "  add [[-PRIORITY] | -p|--priority N] ALIAS URL"
+msgstr ""
+
+#: lib/usage.sh:21
+msgid "                     add or update a mirror (default priority 100)"
+msgstr ""
+
+#: lib/usage.sh:22
+msgid "  remove ALIAS|NUM   remove a mirror"
+msgstr ""
+
+#: lib/usage.sh:23
+msgid ""
+"  use [-c|--config-only] [-a|--all] [-s|--src] [-u|--updates] [-b|--"
+"backports]"
+msgstr ""
+
+#: lib/usage.sh:24
+msgid "                     [--security] [--suite SUITE] ALIAS|NUM"
+msgstr ""
+
+#: lib/usage.sh:25
+msgid ""
+"                     apply mirror (default: all components, src, updates, "
+"backports, security)"
+msgstr ""
+
+#: lib/usage.sh:26
+msgid "  pingtest [-n|--count N] [-W|--timeout SEC]"
+msgstr ""
+
+#: lib/usage.sh:27
+msgid "                     ping all mirrors; list by latency"
+msgstr ""
+
+#: lib/usage.sh:28
+msgid "  bwtest [--ref BYTES]"
+msgstr ""
+
+#: lib/usage.sh:29
+msgid "                     download test on all mirrors; list by score"
+msgstr ""
+
+#: lib/usage.sh:30
+msgid "  pingsel [apply opts] [-n|--count N] [-W|--timeout SEC]"
+msgstr ""
+
+#: lib/usage.sh:31
+msgid "                     pingtest then use the best mirror"
+msgstr ""
+
+#: lib/usage.sh:32
+msgid "  bwsel [apply opts] [--ref BYTES]"
+msgstr ""
+
+#: lib/usage.sh:33
+msgid "                     bwtest then use the best mirror"
+msgstr ""
+
+#: lib/usage.sh:34
+msgid "  help               show this help"
+msgstr ""
+
+#: lib/usage.sh:35
+msgid "  version            show version"
+msgstr ""
+
+#~ msgid ""
+#~ "Usage: lrm [OPTION]... [FILE]...\n"
+#~ "Concatenate FILE(s) to standard output. With no FILE, or when FILE is -,\n"
+#~ "read standard input.\n"
+#~ msgstr ""
+#~ "Verwendung: lrm [OPTION]... [FILE]...\n"
+#~ "Verkettet FILE(s) zur Standardausgabe. Ohne FILE oder wenn FILE - ist,\n"
+#~ "wird von der Standardeingabe gelesen.\n"
+
+#~ msgid "repeat for more verbose loggings\n"
+#~ msgstr "wiederholen fuer ausfuehrlichere Protokollmeldungen\n"
+
+#~ msgid "show less logging messages\n"
+#~ msgstr "weniger Protokollmeldungen anzeigen\n"
+
+#~ msgid "display this help and exit\n"
+#~ msgstr "diese Hilfe anzeigen und beenden\n"
+
+#~ msgid "output version information and exit\n"
+#~ msgstr "Versionsinformationen anzeigen und beenden\n"
+
+#, c-format
+#~ msgid "Report bugs to: <%s>\n"
+#~ msgstr "Fehler melden an: <%s>\n"
+
+#, c-format
+#~ msgid "hello, world!\n"
+#~ msgstr "Hallo, Welt!\n"
+
+#, c-format
+#~ msgid "Copyright (C) %d %s\n"
+#~ msgstr "Copyright (C) %d %s\n"
+
+#~ msgid ""
+#~ "License AGPL-3.0-or-later: <https://www.gnu.org/licenses/agpl-3.0.html>\n"
+#~ msgstr ""
+#~ "Lizenz AGPL-3.0-or-later: <https://www.gnu.org/licenses/agpl-3.0.html>\n"
+
+#~ msgid "This is free software: you are free to change and redistribute it.\n"
+#~ msgstr "Dies ist freie Software: Sie duerfen sie aendern und weitergeben.\n"
+
+#~ msgid "This project opposes AI exploitation and AI hegemony.\n"
+#~ msgstr "Dieses Projekt lehnt KI-Ausbeutung und KI-Hegemonie ab.\n"
+
+#~ msgid ""
+#~ "This project rejects mindless MIT-style licensing and politically naive "
+#~ "BSD-style licensing.\n"
+#~ msgstr ""
+#~ "Dieses Projekt lehnt gedankenlose MIT-artige Lizenzen und politisch naive "
+#~ "BSD-artige Lizenzen ab.\n"
+
+#~ msgid "There is NO WARRANTY, to the extent permitted by law.\n"
+#~ msgstr "Es gibt KEINE GARANTIE, soweit gesetzlich zulaessig.\n"
+
+#, c-format
+#~ msgid "%s: write error\n"
+#~ msgstr "%s: Schreibfehler\n"
