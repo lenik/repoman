@@ -52,6 +52,7 @@ source "$LIB_DIR/usage.sh"
 
 VERBOSE=0
 QUIET=0
+LRM_DISTRO=""
 LRM_CONFIG_ONLY=0
 LRM_LIST_PRIORITY=0
 LRM_PING_COUNT=3
@@ -229,6 +230,15 @@ main() {
             shift
             ;;
         -q|--quiet) QUIET=1; shift ;;
+        -o|--distro)
+            [[ $# -ge 2 ]] || die "$(_ 'usage: lrm [-o|--distro NAME] COMMAND ...')"
+            LRM_DISTRO="$2"
+            shift 2
+            ;;
+        -l|--list-distros)
+            list_supported_distros
+            exit 0
+            ;;
         -h|--help) usage; exit 0 ;;
         --version) version; exit 0 ;;
         --) shift; break ;;
@@ -242,7 +252,7 @@ main() {
         exit 1
     fi
 
-    export VERBOSE QUIET
+    export VERBOSE QUIET LRM_DISTRO
     init_lrm
 
     local cmd="$1"

@@ -2,8 +2,174 @@
 # Copyright (C) 2026 Lenik <repoman@bodz.net>
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+# Debian-family distros (apt). Includes Deepin/UOS desktop, openKylin, etc.
+readonly -a _LRM_DEBIAN_DISTROS=(
+    antix avlinux bunsenlabs debian deepin devuan elementary feren gnuinos
+    kali knoppix lmde linuxmint mx neon parrot peppermint pop pureos raspbian
+    siduction sparky ubuntu ubuntukylin uos voyager zorin openkylin
+)
+
+# RPM-family distros (dnf/yum). Includes Kylin, openEuler, UOS Server, etc.
+readonly -a _LRM_RPM_DISTROS=(
+    alinux alma amzn anolis azurelinux azl cbl-mariner centos clearos cloudlinux
+    ctyunos eurolinux euleros fedora isoft kylin kylinsec kylinsecos mariner
+    neokylin nfslinux ol opencloudos openeuler redflag rhel rocky rpm sangfor
+    scilinux sl springdale tencentos uos-server uoseuler virtuozzo
+)
+
+# Arch-family distros (pacman).
+readonly -a _LRM_ARCH_DISTROS=(
+    arch arcolinux archcraft artix blackarch cachyos endeavouros garuda hyperbola
+    manjaro parabola rebornos
+)
+
+# All names accepted by -o/--distro (includes family alias rpm).
+LRM_SUPPORTED_DISTROS=(
+    "${_LRM_DEBIAN_DISTROS[@]}"
+    "${_LRM_RPM_DISTROS[@]}"
+    "${_LRM_ARCH_DISTROS[@]}"
+    rpm
+)
+
+_distro_in_list() {
+    local name="$1"
+    shift
+    local d
+    for d in "$@"; do
+        [[ "$d" == "$name" ]] && return 0
+    done
+    return 1
+}
+
+_family_for_distro_id() {
+    local id="${1,,}"
+    if _distro_in_list "$id" "${_LRM_DEBIAN_DISTROS[@]}"; then
+        printf 'debian\n'
+        return 0
+    fi
+    if _distro_in_list "$id" "${_LRM_RPM_DISTROS[@]}"; then
+        printf 'rpm\n'
+        return 0
+    fi
+    if _distro_in_list "$id" "${_LRM_ARCH_DISTROS[@]}"; then
+        printf 'arch\n'
+        return 0
+    fi
+    return 1
+}
+
+normalize_distro_name() {
+    local name="${1,,}"
+    case "$name" in
+    redhat) printf 'rhel\n' ;;
+    oracle|oraclelinux) printf 'ol\n' ;;
+    amazon|amazonlinux) printf 'amzn\n' ;;
+    mint) printf 'linuxmint\n' ;;
+    uniontech|chinauos) printf 'uos\n' ;;
+    uos-server|uosserver|uniontech-server|uniontechos-server) printf 'uos-server\n' ;;
+    rockylinux) printf 'rocky\n' ;;
+    almalinux) printf 'alma\n' ;;
+    openeuler-os|open-euler) printf 'openeuler\n' ;;
+    euler) printf 'euleros\n' ;;
+    neokylin-linux|neokylinos) printf 'neokylin\n' ;;
+    openkylinos) printf 'openkylin\n' ;;
+    tencent|tlinux) printf 'tencentos\n' ;;
+    ctyun|ctyun-os) printf 'ctyunos\n' ;;
+    alios|alibabacloud) printf 'alinux\n' ;;
+    kylinos|kylin-linux|kylinserver) printf 'kylin\n' ;;
+    scientific|scientificlinux) printf 'scilinux\n' ;;
+    centos-stream|centosstream) printf 'centos\n' ;;
+    azure-linux|azure) printf 'azurelinux\n' ;;
+    *) printf '%s\n' "$name" ;;
+    esac
+}
+
+distro_is_supported() {
+    local distro="$1"
+    _distro_in_list "$distro" "${LRM_SUPPORTED_DISTROS[@]}"
+}
+
+validate_distro() {
+    local distro="$1"
+    distro_is_supported "$distro" || \
+        die "$(printf "$(_ 'unsupported distro: %s (see: lrm --list-distros)')" "$distro")"
+}
+
+distro_to_family() {
+    local distro="${1,,}"
+    if _family_for_distro_id "$distro"; then
+        return 0
+    fi
+    die "$(printf "$(_ 'unsupported distro: %s (see: lrm --list-distros)')" "$distro")"
+}
+
+# UnionTech OS Server (openEuler/openAnolis) sets PLATFORM_ID=platform:uel*.
+_uos_is_server() {
+    [[ "${PLATFORM_ID:-}" == platform:uel* ]]
+}
+
+detect_host_distro() {
+    local id family
+
+    if [[ ! -f /etc/os-release ]]; then
+        if [[ -f /etc/debian_version ]]; then
+            printf 'debian\n'
+            return 0
+        fi
+        if [[ -f /etc/redhat-release ]]; then
+            printf 'rpm\n'
+            return 0
+        fi
+        printf 'unknown\n'
+        return 0
+    fi
+
+    # shellcheck disable=SC1091
+    source /etc/os-release
+    id="$(normalize_distro_name "${ID:-}")"
+    if [[ "$id" == uos ]] && _uos_is_server; then
+        id=uos-server
+    fi
+    if distro_is_supported "$id"; then
+        printf '%s\n' "$id"
+        return 0
+    fi
+
+    family="$(detect_distro_family)"
+    case "$family" in
+    debian) printf 'debian\n' ;;
+    rpm) printf 'rocky\n' ;;
+    arch) printf 'arch\n' ;;
+    *) printf 'unknown\n' ;;
+    esac
+}
+
+get_effective_distro() {
+    local distro
+
+    if [[ -n "${LRM_DISTRO:-}" ]]; then
+        distro="$(normalize_distro_name "$LRM_DISTRO")"
+        validate_distro "$distro"
+        printf '%s\n' "$distro"
+        return 0
+    fi
+
+    distro="$(detect_host_distro)"
+    if [[ "$distro" == unknown ]]; then
+        die "$(_ 'could not detect host distribution; use -o/--distro NAME')"
+    fi
+    printf '%s\n' "$distro"
+}
+
+list_supported_distros() {
+    printf '%s\n' "${LRM_SUPPORTED_DISTROS[@]}" | LC_ALL=C sort -u
+}
+
 load_distro_backend() {
-    load_distro_backend_for "$(detect_distro_family)"
+    LRM_DISTRO="$(get_effective_distro)"
+    load_distro_backend_for "$(distro_to_family "$LRM_DISTRO")"
+    lrm_set_distro_state
+    vlog2 "distribution: $LRM_DISTRO (family: $DISTRO_FAMILY)"
 }
 
 load_distro_backend_for() {
@@ -48,26 +214,17 @@ detect_distro_family() {
     # shellcheck disable=SC1091
     source /etc/os-release
     id="${ID,,}"
+    if [[ "$id" == uos ]] && _uos_is_server; then
+        id=uos-server
+    fi
+    if _family_for_distro_id "$id"; then
+        return 0
+    fi
+
     like="${ID_LIKE:-}"
-
-    case "$id" in
-        debian|ubuntu|linuxmint|pop|elementary|zorin|kali|raspbian)
-            printf 'debian\n'
-            return 0
-            ;;
-        centos|rhel|rocky|alma|fedora|ol|amzn|virtuozzo|opencloudos|anolis)
-            printf 'rpm\n'
-            return 0
-            ;;
-        arch|manjaro|endeavouros|garuda)
-            printf 'arch\n'
-            return 0
-            ;;
-    esac
-
     case "$like" in
         *debian*) printf 'debian\n' ; return 0 ;;
-        *rhel*|*fedora*) printf 'rpm\n' ; return 0 ;;
+        *rhel*|*fedora*|*centos*) printf 'rpm\n' ; return 0 ;;
         *arch*) printf 'arch\n' ; return 0 ;;
     esac
 

@@ -11,6 +11,8 @@ $(_ 'Manage distribution package mirrors and select the fastest one.')
 $(_ 'Options:')
 $(_ '  -v, --verbose      more logging (repeatable: -v tests, -vv paths, -vvv metrics, -vvvv trace)')
 $(_ '  -q, --quiet        less logging')
+$(_ '  -o, --distro NAME  target distribution (default: detect from host)')
+$(_ '  -l, --list-distros list supported distribution names')
 $(_ '  -h, --help         show this help')
 $(_ '      --version      show version')
 
