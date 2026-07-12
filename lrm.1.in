@@ -66,8 +66,21 @@ Print version information and exit successfully.
 List configured mirrors as
 .IR MARK " [" N "] " ALIAS .
 .RB MARK
-is
-.BR * " (selected), " \- " (failed last test), " ? " (untested), or two spaces.
+uses emoji by default:
+✅
+(in use),
+❎
+(failed last test),
+⚡
+(fastest from last ping/bwtest but not selected),
+🟢
+(passed last test),
+⚪
+(untested).
+With
+.BR \-c " or " \-\-char ,
+use ASCII instead:
+.BR * " (in use), " x " (failed), " + " (fastest), " v " (ok), " ? " (untested).
 .RB N
 is a one-based shortcut accepted by
 .BR use " and " remove .
@@ -181,6 +194,11 @@ or host detection), e.g.
 .TP
 .I ~/.config/repoman/lrm/DISTRO/default
 Currently selected mirror alias for that distribution.
+.TP
+.I ~/.config/repoman/lrm/DISTRO/preferred
+Fastest mirror alias from the last
+.BR pingtest " or " bwtest
+(when it differs from the selected mirror).
 .TP
 .I ~/.config/repoman/lrm/DISTRO/health
 Last ping/bwtest result per mirror for that distribution (

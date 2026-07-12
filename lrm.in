@@ -55,6 +55,7 @@ QUIET=0
 LRM_DISTRO=""
 LRM_CONFIG_ONLY=0
 LRM_LIST_PRIORITY=0
+LRM_LIST_CHAR=0
 LRM_PING_COUNT=3
 LRM_PING_TIMEOUT=2
 
@@ -64,15 +65,17 @@ version() {
 
 cmd_list() {
     LRM_LIST_PRIORITY=0
+    LRM_LIST_CHAR=0
     while [[ $# -gt 0 ]]; do
         case "$1" in
         -p|--priority) LRM_LIST_PRIORITY=1; shift ;;
+        -c|--char) LRM_LIST_CHAR=1; shift ;;
         -h|--help) usage; exit 0 ;;
-        -*) die "$(_ 'usage: lrm list [-p|--priority]')" ;;
-        *) die "$(_ 'usage: lrm list [-p|--priority]')" ;;
+        -*) die "$(_ 'usage: lrm list [-c|--char] [-p|--priority]')" ;;
+        *) die "$(_ 'usage: lrm list [-c|--char] [-p|--priority]')" ;;
         esac
     done
-    export LRM_LIST_PRIORITY
+    export LRM_LIST_PRIORITY LRM_LIST_CHAR
     ensure_mirrors
     if ((${#MIRROR_ALIASES[@]} == 0)); then
         log "$(_ 'no mirrors configured')"
