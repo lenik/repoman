@@ -3,6 +3,14 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 detect_debian_suite() {
+    if [[ -n "${LRM_RELEASE:-}" ]]; then
+        printf '%s\n' "$LRM_RELEASE"
+        return 0
+    fi
+    if [[ -n "${LRM_SUITE:-}" ]]; then
+        printf '%s\n' "$LRM_SUITE"
+        return 0
+    fi
     if [[ -f /etc/os-release ]]; then
         # shellcheck disable=SC1091
         source /etc/os-release
@@ -11,11 +19,23 @@ detect_debian_suite() {
             return 0
         fi
     fi
-    printf '%s\n' "${LRM_SUITE:-bookworm}"
+    printf '%s\n' "bookworm"
 }
 
 debian_security_mirror_url() {
     local url="${1%/}"
+    if [[ "$url" == *archive.debian.org* ]]; then
+        if [[ "$url" == */debian ]]; then
+            printf '%s-security\n' "$url"
+        else
+            printf '%s/debian-security\n' "$url"
+        fi
+        return 0
+    fi
+    if [[ "$url" == *debian-archive* ]]; then
+        printf '%s/debian-security\n' "$url"
+        return 0
+    fi
     if [[ "$url" == */debian ]]; then
         printf '%s-security\n' "$url"
         return 0

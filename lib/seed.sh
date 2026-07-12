@@ -2,6 +2,51 @@
 # Copyright (C) 2026 Lenik <repoman@bodz.net>
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+debian_release_archived() {
+    local release="${1,,}"
+    case "$release" in
+    bullseye|buster|stretch|jessie|wheezy|squeeze|etch|sarge|woody|potato|hamm)
+        return 0
+        ;;
+    esac
+    return 1
+}
+
+ubuntu_release_archived() {
+    local release="${1,,}"
+    case "$release" in
+    trusty|xenial|bionic|focal|yoga|zesty|artful|cosmic|disco|eoan|groovy|hirsute|impish| \
+    kinetic|lunar|mantic| \
+    14.04|16.04|18.04|20.04|17.04|17.10|18.10|19.04|19.10|20.10|21.04|21.10|22.10|23.04|23.10|24.10)
+        return 0
+        ;;
+    esac
+    return 1
+}
+
+centos_release_vault() {
+    local release="${1%%.*}"
+    [[ "$release" =~ ^[678]$ ]]
+}
+
+release_seed_profile() {
+    local profile="$1"
+    local release="$2"
+
+    [[ -n "$release" ]] || return 1
+    case "$profile" in
+    debian)
+        debian_release_archived "$release" && printf 'debian-archive\n'
+        ;;
+    ubuntu)
+        ubuntu_release_archived "$release" && printf 'ubuntu-old\n'
+        ;;
+    centos)
+        centos_release_vault "$release" && printf 'centos-vault\n'
+        ;;
+    esac
+}
+
 # Map a distro name to a built-in mirror profile (URLs differ per profile).
 distro_seed_profile() {
     local distro="${1,,}"
@@ -50,6 +95,14 @@ seed_builtin_mirrors() {
         mirror_add huawei 40 https://mirrors.huaweicloud.com/debian
         mirror_add kernel 50 https://mirrors.kernel.org/debian
         ;;
+    debian-archive)
+        mirror_add archive 10 http://archive.debian.org/debian
+        mirror_add tuna 20 https://mirrors.tuna.tsinghua.edu.cn/debian-archive
+        mirror_add 163 25 https://mirrors.163.com/debian-archive
+        mirror_add aliyun 30 https://mirrors.aliyun.com/debian-archive
+        mirror_add ustc 35 https://mirrors.ustc.edu.cn/debian-archive
+        mirror_add huawei 40 https://mirrors.huaweicloud.com/debian-archive
+        ;;
     ubuntu)
         mirror_add ubuntu 10 http://archive.ubuntu.com/ubuntu
         mirror_add tuna 20 https://mirrors.tuna.tsinghua.edu.cn/ubuntu
@@ -58,6 +111,14 @@ seed_builtin_mirrors() {
         mirror_add ustc 35 https://mirrors.ustc.edu.cn/ubuntu
         mirror_add huawei 40 https://mirrors.huaweicloud.com/ubuntu
         mirror_add kernel 50 https://mirrors.kernel.org/ubuntu
+        ;;
+    ubuntu-old)
+        mirror_add ubuntu 10 http://old-releases.ubuntu.com/ubuntu
+        mirror_add tuna 20 https://mirrors.tuna.tsinghua.edu.cn/ubuntu-old-releases
+        mirror_add 163 25 https://mirrors.163.com/ubuntu-old-releases
+        mirror_add aliyun 30 https://mirrors.aliyun.com/ubuntu-old-releases
+        mirror_add ustc 35 https://mirrors.ustc.edu.cn/ubuntu-old-releases
+        mirror_add huawei 40 https://mirrors.huaweicloud.com/ubuntu-old-releases
         ;;
     kali)
         mirror_add kali 10 http://http.kali.org/kali
@@ -113,6 +174,14 @@ seed_builtin_mirrors() {
         mirror_add aliyun 30 https://mirrors.aliyun.com/centos-stream
         mirror_add ustc 40 https://mirrors.ustc.edu.cn/centos-stream
         mirror_add huawei 50 https://mirrors.huaweicloud.com/centos-stream
+        ;;
+    centos-vault)
+        mirror_add centos 10 https://vault.centos.org
+        mirror_add tuna 20 https://mirrors.tuna.tsinghua.edu.cn/centos-vault
+        mirror_add 163 25 https://mirrors.163.com/centos-vault
+        mirror_add aliyun 30 https://mirrors.aliyun.com/centos-vault
+        mirror_add ustc 40 https://mirrors.ustc.edu.cn/centos-vault
+        mirror_add huawei 50 https://mirrors.huaweicloud.com/centos-vault
         ;;
     openeuler)
         mirror_add openeuler 10 https://repo.openeuler.org
@@ -183,8 +252,11 @@ seed_builtin_mirrors() {
 
 seed_default_mirrors_for() {
     local distro="$1"
-    local profile
+    local profile archive_profile release="${LRM_RELEASE:-}"
+
     profile="$(distro_seed_profile "$distro")"
+    archive_profile="$(release_seed_profile "$profile" "$release" || true)"
+    [[ -n "$archive_profile" ]] && profile="$archive_profile"
     seed_builtin_mirrors "$profile"
 }
 
@@ -194,9 +266,13 @@ ensure_mirrors() {
         return 0
     fi
 
-    local distro="${LRM_DISTRO:-$(get_effective_distro)}"
+    local distro="${LRM_DISTRO_ID:-${LRM_DISTRO:-$(get_effective_distro)}}"
+    if [[ "$distro" == *:* ]]; then
+        parse_distro_spec "$distro"
+        distro="$LRM_DISTRO_ID"
+    fi
     seed_default_mirrors_for "$distro"
     save_mirrors
     LRM_MIRRORS_LOADED=1
-    vlog "$(printf "$(_ 'installed default mirrors for %s')" "$distro")"
+    vlog "$(printf "$(_ 'installed default mirrors for %s')" "$(distro_spec_display 2>/dev/null || printf '%s' "$distro")")"
 }

@@ -3,6 +3,14 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 detect_rpm_releasever() {
+    if [[ -n "${LRM_RELEASE:-}" ]]; then
+        printf '%s\n' "${LRM_RELEASE%%.*}"
+        return 0
+    fi
+    if [[ -n "${LRM_RELEASEVER:-}" ]]; then
+        printf '%s\n' "${LRM_RELEASEVER%%.*}"
+        return 0
+    fi
     if [[ -f /etc/os-release ]]; then
         # shellcheck disable=SC1091
         source /etc/os-release
@@ -11,7 +19,7 @@ detect_rpm_releasever() {
             return 0
         fi
     fi
-    printf '%s\n' "${LRM_RELEASEVER:-9}"
+    printf '%s\n' "9"
 }
 
 detect_rpm_basearch() {
@@ -106,8 +114,27 @@ mirror_probe_url() {
             "$base" "$releasever" "$basearch"
         ;;
     centos)
-        printf '%s/%s-stream/BaseOS/%s/os/repodata/repomd.xml\n' \
-            "$base" "$releasever" "$basearch"
+        if centos_release_vault "${LRM_RELEASEVER:-$(detect_rpm_releasever)}"; then
+            releasever="${LRM_RELEASEVER:-$(detect_rpm_releasever)}"
+            releasever="${releasever%%.*}"
+            case "$releasever" in
+            7)
+                printf '%s/7.9.2009/os/%s/repodata/repomd.xml\n' \
+                    "$base" "$basearch"
+                ;;
+            8)
+                printf '%s/8-stream/BaseOS/%s/os/repodata/repomd.xml\n' \
+                    "$base" "$basearch"
+                ;;
+            *)
+                printf '%s/%s/os/%s/repodata/repomd.xml\n' \
+                    "$base" "$releasever" "$basearch"
+                ;;
+            esac
+        else
+            printf '%s/%s-stream/BaseOS/%s/os/repodata/repomd.xml\n' \
+                "$base" "$releasever" "$basearch"
+        fi
         ;;
     ol)
         printf '%s/OL%s/%s/baseos/%s/repodata/repomd.xml\n' \
