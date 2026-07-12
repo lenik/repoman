@@ -93,7 +93,35 @@ mirror_probe_url() {
     local base="${1%/}"
     local releasever="${LRM_RELEASEVER:-$(detect_rpm_releasever)}"
     local basearch="${LRM_ARCH:-$(detect_rpm_basearch)}"
-    printf '%s/%s/BaseOS/%s/os/repodata/repomd.xml\n' "$base" "$releasever" "$basearch"
+    local profile
+    profile="$(distro_seed_profile "${LRM_DISTRO:-rpm}")"
+
+    case "$profile" in
+    fedora)
+        printf '%s/releases/%s/Everything/%s/os/repodata/repomd.xml\n' \
+            "$base" "$releasever" "$basearch"
+        ;;
+    openeuler)
+        printf '%s/openEuler-%s-LTS/OS/%s/repodata/repomd.xml\n' \
+            "$base" "$releasever" "$basearch"
+        ;;
+    centos)
+        printf '%s/%s-stream/BaseOS/%s/os/repodata/repomd.xml\n' \
+            "$base" "$releasever" "$basearch"
+        ;;
+    ol)
+        printf '%s/OL%s/%s/baseos/%s/repodata/repomd.xml\n' \
+            "$base" "$releasever" "$releasever" "$basearch"
+        ;;
+    alinux)
+        printf '%s/alinux/%s/os/%s/repodata/repomd.xml\n' \
+            "$base" "$releasever" "$basearch"
+        ;;
+    *)
+        printf '%s/%s/BaseOS/%s/os/repodata/repomd.xml\n' \
+            "$base" "$releasever" "$basearch"
+        ;;
+    esac
 }
 
 render_mirror_config() {

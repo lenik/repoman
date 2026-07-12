@@ -23,6 +23,12 @@ debian_security_mirror_url() {
     printf '%s/debian-security\n' "$url"
 }
 
+mirror_probe_url() {
+    local base="${1%/}"
+    local suite="${LRM_SUITE:-$(detect_debian_suite)}"
+    printf '%s/dists/%s/Release\n' "$base" "$suite"
+}
+
 lrm_debian_apply_defaults() {
     LRM_DEB_SRC=1
     LRM_DEB_UPDATES=1
