@@ -103,7 +103,7 @@ _lrm()
     if [[ "$cur" == -* && -n "$cmd_idx" && "$cword" -le $((cmd_idx + 1)) ]]; then
         case "$cmd" in
         list)
-            COMPREPLY=($(compgen -W '-p --priority --help' -- "$cur"))
+            COMPREPLY=($(compgen -W '-c --char -p --priority --help' -- "$cur"))
             ;;
         add)
             COMPREPLY=($(compgen -W '-p --priority --help' -- "$cur"))
@@ -165,7 +165,7 @@ _lrm()
                 while IFS= read -r line; do
                     [[ -n "$line" ]] || continue
                     mirrors+=" $(awk '{print $NF}' <<<"$line")"
-                    nums+=" $(sed -n 's/^[ *?-]*\[\([0-9]*\)\].*/\1/p' <<<"$line")"
+                    nums+=" $(sed -n 's/.*\[\([0-9][0-9]*\)\].*/\1/p' <<<"$line")"
                 done < <(_lrm_mirror_candidates)
                 COMPREPLY=($(compgen -W "${mirrors# } ${nums# }" -- "$cur"))
                 ;;
