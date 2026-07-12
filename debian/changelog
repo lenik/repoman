@@ -1,3 +1,20 @@
+repoman (1.2.0) testing; urgency=medium
+
+  * Add -o/--distro NAME and -l/--list-distros; support 76 distribution
+    names (Debian, RPM, Arch families, including uos, kylin, openeuler,
+    deepin, openkylin, tencentos, ctyunos, alinux, and others).
+  * Store mirror state per distribution under
+    ~/.config/repoman/lrm/DISTRO/; migrate legacy flat files into the
+    host-distribution directory only.
+  * Seed built-in mirrors per distribution profile with correct upstream
+    and Chinese mirror URLs; use distro-specific bwtest probe paths.
+  * Show mirror status on list: emoji by default (in use, failed, fastest,
+    ok, untested); ASCII marks with list -c/--char (* x + v ?).
+  * Record fastest mirror from pingtest/bwtest in DISTRO/preferred.
+  * Update bash completion for distro options, apply flags, and list marks.
+
+ -- Lenik (谢继雷) <lenik@bodz.net>  Mon, 13 Jul 2026 03:02:00 +0800
+
 repoman (1.1.0) testing; urgency=medium
 
   * Add CSI-colored logging by verbosity level when terminfo supports it.
