@@ -245,13 +245,13 @@ mirror_list_mark() {
         default="$(tr -d '[:space:]' <"$LRM_DEFAULT_FILE")"
     fi
     if [[ "$alias" == "$default" ]]; then
-        printf '* '
+        printf '%s' '* '
         return 0
     fi
     case "$(health_get "$alias")" in
-    bad) printf '- ' ;;
-    ok) printf '  ' ;;
-    *) printf '? ' ;;
+    bad) printf '%s' '- ' ;;
+    ok) printf '%s' '  ' ;;
+    *) printf '%s' '? ' ;;
     esac
 }
 
