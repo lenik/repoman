@@ -9,6 +9,7 @@ MIRROR_URLS=()
 LRM_MIRROR_FILE=""
 LRM_DEFAULT_FILE=""
 LRM_HEALTH_FILE=""
+LRM_PREFERRED_FILE=""
 DISTRO_FAMILY=""
 LRM_GETBAR="${LRM_GETBAR:-getbar}"
 LRM_GETBAR_OPTS="${LRM_GETBAR_OPTS:--c -d2 -p1 -w3 -s30m -i.1 -q}"
@@ -146,14 +147,32 @@ init_lrm() {
 
 _lrm_migrate_legacy_state() {
     local distro="$1"
+    local host_distro
     local legacy_mirror="$LRM_STATE_DIR/mirrors"
     local legacy_default="$LRM_STATE_DIR/default"
     local legacy_health="$LRM_STATE_DIR/health"
+    local migrated=0
 
-    [[ -f "$legacy_mirror" && ! -f "$LRM_MIRROR_FILE" ]] && cp -a "$legacy_mirror" "$LRM_MIRROR_FILE"
-    [[ -f "$legacy_default" && ! -f "$LRM_DEFAULT_FILE" ]] && cp -a "$legacy_default" "$LRM_DEFAULT_FILE"
-    [[ -f "$legacy_health" && ! -f "$LRM_HEALTH_FILE" ]] && cp -a "$legacy_health" "$LRM_HEALTH_FILE"
-    if [[ -f "$legacy_mirror" ]]; then
+    [[ -f "$legacy_mirror" || -f "$legacy_default" || -f "$legacy_health" ]] || return 0
+
+    host_distro="$(detect_host_distro)"
+    [[ "$distro" == "$host_distro" ]] || return 0
+
+    if [[ -f "$legacy_mirror" && ! -f "$LRM_MIRROR_FILE" ]]; then
+        cp -a "$legacy_mirror" "$LRM_MIRROR_FILE"
+        migrated=1
+    fi
+    if [[ -f "$legacy_default" && ! -f "$LRM_DEFAULT_FILE" ]]; then
+        cp -a "$legacy_default" "$LRM_DEFAULT_FILE"
+        migrated=1
+    fi
+    if [[ -f "$legacy_health" && ! -f "$LRM_HEALTH_FILE" ]]; then
+        cp -a "$legacy_health" "$LRM_HEALTH_FILE"
+        migrated=1
+    fi
+
+    if ((migrated)); then
+        rm -f "$legacy_mirror" "$legacy_default" "$legacy_health"
         vlog2 "migrated legacy state into $LRM_STATE_DIR/$distro/"
     fi
 }
@@ -166,6 +185,7 @@ lrm_set_distro_state() {
     LRM_MIRROR_FILE="$LRM_STATE_DIR/$distro/mirrors"
     LRM_DEFAULT_FILE="$LRM_STATE_DIR/$distro/default"
     LRM_HEALTH_FILE="$LRM_STATE_DIR/$distro/health"
+    LRM_PREFERRED_FILE="$LRM_STATE_DIR/$distro/preferred"
     mkdir -p "$LRM_STATE_DIR/$distro"
     _lrm_migrate_legacy_state "$distro"
     invalidate_mirrors_cache
@@ -217,6 +237,52 @@ health_get() {
     local alias="$1"
     health_load
     printf '%s\n' "${LRM_HEALTH[$alias]:-}"
+}
+
+preferred_get() {
+    if [[ -f "$LRM_PREFERRED_FILE" ]]; then
+        tr -d '[:space:]' <"$LRM_PREFERRED_FILE"
+    fi
+}
+
+preferred_set() {
+    _lrm_ensure_distro_paths
+    printf '%s\n' "$1" >"$LRM_PREFERRED_FILE"
+}
+
+preferred_clear() {
+    _lrm_ensure_distro_paths
+    rm -f "$LRM_PREFERRED_FILE"
+}
+
+preferred_apply_ping_results() {
+    local best_line latency loss alias url
+    best_line="$(printf '%s\n' "$@" | LC_ALL=C sort -n -k1,1n -k2,2n | head -1)"
+    [[ -n "$best_line" ]] || {
+        preferred_clear
+        return 0
+    }
+    read -r latency loss alias url <<<"$best_line"
+    if [[ "$latency" == "9999" || "$loss" -ge 100 ]]; then
+        preferred_clear
+        return 0
+    fi
+    preferred_set "$alias"
+}
+
+preferred_apply_bw_results() {
+    local best_line score bps offset slope alias url
+    best_line="$(printf '%s\n' "$@" | LC_ALL=C sort -t' ' -k1,1nr | head -1)"
+    [[ -n "$best_line" ]] || {
+        preferred_clear
+        return 0
+    }
+    read -r score bps offset slope alias url <<<"$best_line"
+    if [[ "$score" == "0" ]]; then
+        preferred_clear
+        return 0
+    fi
+    preferred_set "$alias"
 }
 
 health_apply_ping_results() {
@@ -275,19 +341,41 @@ build_mirror_list_order() {
 
 mirror_list_mark() {
     local alias="$1"
-    local default=""
+    local default="" preferred=""
+    local mark_in_use mark_failed mark_fastest mark_ok mark_untested
+
+    if [[ "${LRM_LIST_CHAR:-0}" -eq 1 ]]; then
+        mark_in_use='*'
+        mark_failed='x'
+        mark_fastest='+'
+        mark_ok='v'
+        mark_untested='?'
+    else
+        mark_in_use='✅'
+        mark_failed='❎'
+        mark_fastest='⚡'
+        mark_ok='🟢'
+        mark_untested='⚪'
+    fi
 
     if [[ -f "$LRM_DEFAULT_FILE" ]]; then
         default="$(tr -d '[:space:]' <"$LRM_DEFAULT_FILE")"
     fi
     if [[ "$alias" == "$default" ]]; then
-        printf '%s' '* '
+        printf '%s ' "$mark_in_use"
         return 0
     fi
     case "$(health_get "$alias")" in
-    bad) printf '%s' '- ' ;;
-    ok) printf '%s' '  ' ;;
-    *) printf '%s' '? ' ;;
+    bad) printf '%s ' "$mark_failed" ;;
+    ok)
+        preferred="$(preferred_get)"
+        if [[ -n "$preferred" && "$alias" == "$preferred" ]]; then
+            printf '%s ' "$mark_fastest"
+        else
+            printf '%s ' "$mark_ok"
+        fi
+        ;;
+    *) printf '%s ' "$mark_untested" ;;
     esac
 }
 
@@ -387,6 +475,9 @@ mirror_remove() {
     health_load
     unset 'LRM_HEALTH[$alias]'
     health_save
+    if [[ -f "$LRM_PREFERRED_FILE" ]] && [[ "$(preferred_get)" == "$alias" ]]; then
+        preferred_clear
+    fi
 }
 
 load_mirrors() {
@@ -669,6 +760,7 @@ run_pingtest() {
     rm -rf "$tmpdir"
 
     health_apply_ping_results <<<"$(printf '%s\n' "${results[@]}")"
+    preferred_apply_ping_results "${results[@]}"
 
     printf '%s\n' "${results[@]}" | sort -n -k1,1n -k2,2n | while read -r latency loss alias url; do
         printf '%s %s latency=%sms loss=%s%%\n' "$alias" "$url" "$latency" "$loss"
@@ -699,6 +791,7 @@ run_bwtest() {
     rm -rf "$tmpdir"
 
     health_apply_bw_results <<<"$(printf '%s\n' "${results[@]}")"
+    preferred_apply_bw_results "${results[@]}"
 
     printf '%s\n' "${results[@]}" | sort -t' ' -k1,1nr | while read -r score bps offset slope alias url; do
         printf '%s %s score=%s bps=%s offset=%ss slope=%s\n' \
