@@ -1,0 +1,88 @@
+.TH drm 1 "@PROJECT_YEAR@" "@PROJECT_VERSION@" "User Commands"
+.SH NAME
+drm \- manage and benchmark Docker registry mirrors
+.SH SYNOPSIS
+.B drm
+.RI [ OPTION ]...
+.IR COMMAND
+.RI [ ARGS ]...
+.SH DESCRIPTION
+.B drm
+stores Docker registry mirror URLs, benchmarks them with ping or HTTP
+download tests, and writes the selected mirror to
+.BR /etc/docker/daemon.json
+as
+.BR registry\-mirrors .
+.PP
+Mirror definitions live under
+.RI $XDG_CONFIG_HOME /repoman/drm/ .
+On first run,
+.B drm
+seeds built-in public registry mirrors (Docker Hub and common Chinese
+mirrors).
+.SH OPTIONS
+.TP
+.BR \-v ", " \-\-verbose
+Increase logging verbosity (repeatable).
+.TP
+.BR \-q ", " \-\-quiet
+Reduce logging verbosity.
+.TP
+.BR \-h ", " \-\-help
+Print a usage summary and exit successfully.
+.TP
+.B \-\-version
+Print version information and exit successfully.
+.SH COMMANDS
+.TP
+.B list
+List configured mirrors as
+.IR MARK " [" N "] " ALIAS .
+See
+.BR lrm (1)
+for
+.B MARK
+emoji/ASCII conventions (same markers).
+.TP
+.BR add " [[" \- PRIORITY "] | " \-p ", " \-\-priority " " N "] " ALIAS URL
+Add or update a registry mirror.
+.TP
+.BR remove " " ALIAS\|NUM
+Remove a mirror by alias or list number.
+.TP
+.BR use " [" \-c ", " \-\-config\-only "] " ALIAS\|NUM
+Set
+.B registry-mirrors
+in
+.I /etc/docker/daemon.json
+to the chosen URL and reload Docker (unless
+.BR \-\-config\-only ).
+.TP
+.BR pingtest ", " bwtest ", " pingsel ", " bwsel
+Same as
+.BR lrm (1),
+probing the registry
+.B /v2/
+API endpoint.
+.SH FILES
+.TP
+.I ~/.config/repoman/drm/mirrors
+Tab-separated mirror database.
+.TP
+.I /etc/docker/daemon.json
+Docker daemon configuration updated by
+.B use " / " pingsel " / " bwsel .
+.SH EXAMPLES
+.TP
+List mirrors and apply the fastest:
+.B drm list
+.br
+.B drm bwsel
+.SH AUTHOR
+Written by @PROJECT_AUTHOR@ <@PROJECT_EMAIL@>.
+.SH COPYRIGHT
+Copyright \(co @PROJECT_YEAR@.
+License AGPL-3.0-or-later.
+.SH "SEE ALSO"
+.BR lrm (1),
+.BR docker (1)

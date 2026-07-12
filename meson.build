@@ -42,10 +42,23 @@ project_config.set('LRM_TEXTDOMAIN', 'lrm')
 project_config.set('LRM_SOURCE_LOCALEDIR', meson.project_source_root() / 'po')
 project_config.set('LRM_BUILD_LOCALEDIR', meson.project_build_root() / 'po')
 project_config.set('LRM_INSTALL_LOCALEDIR', localedir)
+project_config.set('DRM_TEXTDOMAIN', 'drm')
+project_config.set('DRM_SOURCE_LOCALEDIR', meson.project_source_root() / 'po')
+project_config.set('DRM_BUILD_LOCALEDIR', meson.project_build_root() / 'po')
+project_config.set('DRM_INSTALL_LOCALEDIR', localedir)
 
 lrm_script = configure_file(
     input: 'lrm.in',
     output: 'lrm',
+    configuration: project_config,
+    install: true,
+    install_dir: bindir,
+    install_mode: 'rwxr-xr-x',
+)
+
+drm_script = configure_file(
+    input: 'drm.in',
+    output: 'drm',
     configuration: project_config,
     install: true,
     install_dir: bindir,
@@ -61,13 +74,27 @@ run_command(
     check: false,
 )
 
+run_command(
+    'ln',
+    '-sfn',
+    meson.current_source_dir() / 'lib-drm',
+    meson.current_build_dir() / 'lib-drm',
+    check: false,
+)
+
 install_subdir(
     'lib',
     install_dir: pkgdatadir / 'lrm',
 )
 
+install_subdir(
+    'lib-drm',
+    install_dir: pkgdatadir / 'drm',
+)
+
 bash_files = [
     'lrm.bash',
+    'drm.bash',
 ]
 
 foreach file : bash_files
@@ -127,6 +154,14 @@ configure_file(
     install_dir: mandir / 'man1',
 )
 
+configure_file(
+    input: 'drm.1.in',
+    output: 'drm.1',
+    configuration: project_config,
+    install: true,
+    install_dir: mandir / 'man1',
+)
+
 subdir('po')
 
 # look task: list what installed files looks like
@@ -158,13 +193,18 @@ run_target(
             mandir="@4@"
 
             pkgdatadir="@5@"
+            pkgdatadir_drm="@6@"
 
-            mkdir -p "$bindir" "$datadir/bash-completion/completions" "$localedir" "$mandir/man1" "$pkgdatadir"
+            mkdir -p "$bindir" "$datadir/bash-completion/completions" "$localedir" "$mandir/man1" "$pkgdatadir" "$pkgdatadir_drm"
 
             sudo ln -sfn "@BUILD_ROOT@/lrm" "$bindir/lrm"
+            sudo ln -sfn "@BUILD_ROOT@/drm" "$bindir/drm"
             sudo ln -sfn "@BUILD_ROOT@/lrm.1" "$mandir/man1/lrm.1"
+            sudo ln -sfn "@BUILD_ROOT@/drm.1" "$mandir/man1/drm.1"
             sudo ln -sfn "@SOURCE_ROOT@/lrm.bash" "$datadir/bash-completion/completions/lrm"
+            sudo ln -sfn "@SOURCE_ROOT@/drm.bash" "$datadir/bash-completion/completions/drm"
             sudo ln -sfn "@SOURCE_ROOT@/lib" "$pkgdatadir/lib"
+            sudo ln -sfn "@SOURCE_ROOT@/lib-drm" "$pkgdatadir_drm/lib"
 
             printf "Symlinks installed under %s\n" "$prefix"
         '''.format(
@@ -174,6 +214,7 @@ run_target(
             localedir,
             mandir,
             pkgdatadir / 'lrm',
+            pkgdatadir / 'drm',
         ),
     ],
 )
@@ -190,12 +231,17 @@ run_target(
             mandir="@4@"
 
             pkgdatadir="@5@"
+            pkgdatadir_drm="@6@"
 
             for p in \
                 "$bindir/lrm" \
+                "$bindir/drm" \
                 "$mandir/man1/lrm.1" \
+                "$mandir/man1/drm.1" \
                 "$datadir/bash-completion/completions/lrm" \
-                "$pkgdatadir/lib"
+                "$datadir/bash-completion/completions/drm" \
+                "$pkgdatadir/lib" \
+                "$pkgdatadir_drm/lib"
             do
                 if [ -L "$p" ]; then
                     sudo rm -f "$p"
@@ -211,6 +257,7 @@ run_target(
             localedir,
             mandir,
             pkgdatadir / 'lrm',
+            pkgdatadir / 'drm',
         ),
     ],
 )

@@ -1,7 +1,7 @@
 # repoman
 
-**repoman** ships **lrm** (Linux repo manager): a Bash tool to manage, benchmark,
-and apply distribution package mirrors (apt, dnf/yum, pacman).
+**repoman** ships **lrm** (Linux repo manager) and **drm** (Docker repo manager):
+Bash tools to manage, benchmark, and apply package or registry mirrors.
 
 ## `lrm`
 
@@ -19,14 +19,31 @@ Bandwidth tests use [getbar](https://github.com/lenik/getbar) with
 `-c -d2 -p1 -w3 -s30m -i.1 -q` by default. See `lrm(1)` for full command
 reference and scoring details.
 
+## `drm`
+
+```bash
+drm list
+drm add ustc https://docker.mirrors.ustc.edu.cn
+drm pingtest
+drm bwsel
+```
+
+Registry mirror definitions live under `$XDG_CONFIG_HOME/repoman/drm/`.
+On first run, built-in Docker Hub and common Chinese registry mirrors are
+seeded. The selected mirror is written to `registry-mirrors` in
+`/etc/docker/daemon.json` (requires root/sudo; uses **python3** to merge JSON).
+
+See `drm(1)` for full command reference.
+
 ## Repository layout
 
-- `lrm.in` — main driver script (configured by Meson into `build/lrm`)
-- `lib/` — backend modules (`common.sh`, `debian.sh`, `rpm.sh`, `arch.sh`, …)
+- `lrm.in` / `drm.in` — main driver scripts (configured by Meson into `build/`)
+- `lib/` — lrm backend modules (`debian.sh`, `rpm.sh`, `arch.sh`, …)
+- `lib-drm/` — drm backend modules (`docker.sh`, …)
 - `po/` — gettext catalogs (`*.po` → `*.mo`)
 - `man/<lang>/lrm.1.in` — hand-translated manual pages
 - `README-<lang>.md` — hand-translated readmes (see `po/LINGUAS`)
-- `lrm.1.in` — English manual page source
+- `lrm.1.in` / `drm.1.in` — English manual page sources
 - `debian/` — Debian packaging metadata
 - `meson.build` — top-level build definition
 
@@ -87,7 +104,8 @@ Legacy alias: `README-zh.md` installs from `README-zh_CN.md`.
 sudo apt install meson ninja-build gettext
 ```
 
-Optional runtime for `lrm bwtest`: **getbar**, **iputils-ping**.
+Optional runtime for `lrm bwtest` / `drm bwtest`: **getbar**, **iputils-ping**.
+Optional for `drm use`: **python3** (merge `/etc/docker/daemon.json`).
 
 ### Configure and build
 

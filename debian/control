@@ -13,7 +13,9 @@ Depends:
     ${misc:Depends}
 Recommends:
     getbar,
-    iputils-ping
+    iputils-ping,
+    python3
 Description: Linux repo manager (lrm)
  repoman ships lrm, a Bash tool to manage and benchmark package mirrors
  for apt, dnf/yum, and pacman, and apply the fastest mirror to the system.
+ drm manages Docker registry mirrors in /etc/docker/daemon.json.
