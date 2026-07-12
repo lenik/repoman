@@ -108,6 +108,134 @@ _uos_is_server() {
     [[ "${PLATFORM_ID:-}" == platform:uel* ]]
 }
 
+detect_host_release() {
+    local family="$1"
+
+    if [[ -f /etc/os-release ]]; then
+        # shellcheck disable=SC1091
+        source /etc/os-release
+        case "$family" in
+        debian)
+            if [[ -n "${VERSION_CODENAME:-}" ]]; then
+                printf '%s\n' "$VERSION_CODENAME"
+                return 0
+            fi
+            if [[ -n "${UBUNTU_CODENAME:-}" ]]; then
+                printf '%s\n' "$UBUNTU_CODENAME"
+                return 0
+            fi
+            ;;
+        rpm)
+            if [[ -n "${VERSION_ID:-}" ]]; then
+                printf '%s\n' "${VERSION_ID%%.*}"
+                return 0
+            fi
+            ;;
+        esac
+    fi
+    printf '\n'
+}
+
+distro_spec_to_state_key() {
+    local id="$1"
+    local release="${2:-}"
+
+    if [[ -n "$release" ]]; then
+        printf '%s/%s\n' "$id" "$release"
+    else
+        printf '%s\n' "$id"
+    fi
+}
+
+parse_distro_spec() {
+    local spec="$1"
+    local id release
+
+    if [[ "$spec" == *:* ]]; then
+        id="${spec%%:*}"
+        release="${spec#*:}"
+        if [[ "$release" == *:* ]]; then
+            die "$(printf "$(_ 'invalid distro spec (too many colons): %s')" "$spec")"
+        fi
+        [[ -n "$id" && -n "$release" ]] || \
+            die "$(printf "$(_ 'invalid distro spec: %s')" "$spec")"
+    else
+        id="$spec"
+        release=""
+    fi
+
+    id="$(normalize_distro_name "$id")"
+    validate_distro "$id"
+    LRM_DISTRO_ID="$id"
+    LRM_RELEASE="$release"
+}
+
+distro_spec_display() {
+    if [[ -n "${LRM_RELEASE:-}" ]]; then
+        printf '%s:%s\n' "$LRM_DISTRO_ID" "$LRM_RELEASE"
+    else
+        printf '%s\n' "$LRM_DISTRO_ID"
+    fi
+}
+
+apply_distro_release_vars() {
+    case "$(distro_to_family "$LRM_DISTRO_ID")" in
+    debian)
+        if [[ -n "${LRM_RELEASE:-}" ]]; then
+            LRM_SUITE="$LRM_RELEASE"
+        fi
+        ;;
+    rpm)
+        if [[ -n "${LRM_RELEASE:-}" ]]; then
+            LRM_RELEASEVER="${LRM_RELEASE%%.*}"
+        fi
+        ;;
+    esac
+}
+
+detect_host_distro_spec() {
+    local id release family spec
+
+    id="$(detect_host_distro)"
+    if [[ "$id" == unknown ]]; then
+        printf 'unknown\n'
+        return 0
+    fi
+    family="$(distro_to_family "$id")"
+    release="$(detect_host_release "$family")"
+    if [[ -n "$release" ]]; then
+        spec="$id:$release"
+    else
+        spec="$id"
+    fi
+    printf '%s\n' "$spec"
+}
+
+resolve_distro_spec() {
+    local spec id release family
+
+    if [[ -n "${LRM_DISTRO:-}" ]]; then
+        spec="$LRM_DISTRO"
+    else
+        id="$(detect_host_distro)"
+        if [[ "$id" == unknown ]]; then
+            die "$(_ 'could not detect host distribution; use -o/--distro NAME[:RELEASE]')"
+        fi
+        family="$(distro_to_family "$id")"
+        release="$(detect_host_release "$family")"
+        if [[ -n "$release" ]]; then
+            spec="$id:$release"
+        else
+            spec="$id"
+        fi
+    fi
+
+    parse_distro_spec "$spec"
+    LRM_DISTRO="$LRM_DISTRO_ID"
+    LRM_DISTRO_KEY="$(distro_spec_to_state_key "$LRM_DISTRO_ID" "$LRM_RELEASE")"
+    apply_distro_release_vars
+}
+
 detect_host_distro() {
     local id family
 
@@ -145,20 +273,17 @@ detect_host_distro() {
 }
 
 get_effective_distro() {
-    local distro
-
-    if [[ -n "${LRM_DISTRO:-}" ]]; then
-        distro="$(normalize_distro_name "$LRM_DISTRO")"
-        validate_distro "$distro"
-        printf '%s\n' "$distro"
+    if [[ -n "${LRM_DISTRO_ID:-}" ]]; then
+        distro_spec_display
         return 0
     fi
 
-    distro="$(detect_host_distro)"
-    if [[ "$distro" == unknown ]]; then
-        die "$(_ 'could not detect host distribution; use -o/--distro NAME')"
+    local spec
+    spec="$(detect_host_distro_spec)"
+    if [[ "$spec" == unknown ]]; then
+        die "$(_ 'could not detect host distribution; use -o/--distro NAME[:RELEASE]')"
     fi
-    printf '%s\n' "$distro"
+    printf '%s\n' "$spec"
 }
 
 list_supported_distros() {
@@ -166,10 +291,10 @@ list_supported_distros() {
 }
 
 load_distro_backend() {
-    LRM_DISTRO="$(get_effective_distro)"
-    load_distro_backend_for "$(distro_to_family "$LRM_DISTRO")"
+    resolve_distro_spec
+    load_distro_backend_for "$(distro_to_family "$LRM_DISTRO_ID")"
     lrm_set_distro_state
-    vlog2 "distribution: $LRM_DISTRO (family: $DISTRO_FAMILY)"
+    vlog2 "distribution: $(distro_spec_display) (family: $DISTRO_FAMILY, state: $LRM_DISTRO_KEY)"
 }
 
 load_distro_backend_for() {

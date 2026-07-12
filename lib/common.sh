@@ -146,17 +146,27 @@ init_lrm() {
 }
 
 _lrm_migrate_legacy_state() {
-    local distro="$1"
-    local host_distro
-    local legacy_mirror="$LRM_STATE_DIR/mirrors"
-    local legacy_default="$LRM_STATE_DIR/default"
-    local legacy_health="$LRM_STATE_DIR/health"
-    local migrated=0
+    local key="$1"
+    local host_spec host_key legacy_mirror legacy_default legacy_health
+    local legacy_dir migrated=0
+    local saved_id="${LRM_DISTRO_ID:-}"
+    local saved_release="${LRM_RELEASE:-}"
+    local saved_distro="${LRM_DISTRO:-}"
+    local saved_key="${LRM_DISTRO_KEY:-}"
 
-    [[ -f "$legacy_mirror" || -f "$legacy_default" || -f "$legacy_health" ]] || return 0
+    legacy_mirror="$LRM_STATE_DIR/mirrors"
+    legacy_default="$LRM_STATE_DIR/default"
+    legacy_health="$LRM_STATE_DIR/health"
 
-    host_distro="$(detect_host_distro)"
-    [[ "$distro" == "$host_distro" ]] || return 0
+    host_spec="$(detect_host_distro_spec)"
+    [[ "$host_spec" != unknown ]] || return 0
+    parse_distro_spec "$host_spec"
+    host_key="$(distro_spec_to_state_key "$LRM_DISTRO_ID" "$LRM_RELEASE")"
+    LRM_DISTRO_ID="$saved_id"
+    LRM_RELEASE="$saved_release"
+    LRM_DISTRO="$saved_distro"
+    LRM_DISTRO_KEY="$saved_key"
+    [[ "$key" == "$host_key" ]] || return 0
 
     if [[ -f "$legacy_mirror" && ! -f "$LRM_MIRROR_FILE" ]]; then
         cp -a "$legacy_mirror" "$LRM_MIRROR_FILE"
@@ -171,33 +181,53 @@ _lrm_migrate_legacy_state() {
         migrated=1
     fi
 
+    if [[ "$key" == */* ]]; then
+        legacy_dir="${key%%/*}"
+        if [[ -f "$LRM_STATE_DIR/$legacy_dir/mirrors" && ! -f "$LRM_MIRROR_FILE" ]]; then
+            cp -a "$LRM_STATE_DIR/$legacy_dir/mirrors" "$LRM_MIRROR_FILE"
+            migrated=1
+        fi
+        if [[ -f "$LRM_STATE_DIR/$legacy_dir/default" && ! -f "$LRM_DEFAULT_FILE" ]]; then
+            cp -a "$LRM_STATE_DIR/$legacy_dir/default" "$LRM_DEFAULT_FILE"
+            migrated=1
+        fi
+        if [[ -f "$LRM_STATE_DIR/$legacy_dir/health" && ! -f "$LRM_HEALTH_FILE" ]]; then
+            cp -a "$LRM_STATE_DIR/$legacy_dir/health" "$LRM_HEALTH_FILE"
+            migrated=1
+        fi
+    fi
+
     if ((migrated)); then
         rm -f "$legacy_mirror" "$legacy_default" "$legacy_health"
-        vlog2 "migrated legacy state into $LRM_STATE_DIR/$distro/"
+        if [[ "$key" == */* ]]; then
+            legacy_dir="${key%%/*}"
+            rmdir "$LRM_STATE_DIR/$legacy_dir" 2>/dev/null || true
+        fi
+        vlog2 "migrated legacy state into $LRM_STATE_DIR/$key/"
     fi
 }
 
 lrm_set_distro_state() {
-    local distro="${LRM_DISTRO:?}"
+    local key="${LRM_DISTRO_KEY:-${LRM_DISTRO:?}}"
 
     [[ -n "${LRM_STATE_DIR:-}" ]] || die "$(_ 'internal error: call init_lrm before load_distro_backend')"
 
-    LRM_MIRROR_FILE="$LRM_STATE_DIR/$distro/mirrors"
-    LRM_DEFAULT_FILE="$LRM_STATE_DIR/$distro/default"
-    LRM_HEALTH_FILE="$LRM_STATE_DIR/$distro/health"
-    LRM_PREFERRED_FILE="$LRM_STATE_DIR/$distro/preferred"
-    mkdir -p "$LRM_STATE_DIR/$distro"
-    _lrm_migrate_legacy_state "$distro"
+    LRM_MIRROR_FILE="$LRM_STATE_DIR/$key/mirrors"
+    LRM_DEFAULT_FILE="$LRM_STATE_DIR/$key/default"
+    LRM_HEALTH_FILE="$LRM_STATE_DIR/$key/health"
+    LRM_PREFERRED_FILE="$LRM_STATE_DIR/$key/preferred"
+    mkdir -p "$LRM_STATE_DIR/$key"
+    _lrm_migrate_legacy_state "$key"
     invalidate_mirrors_cache
     unset LRM_HEALTH_LOADED
-    vlog2 "distro state: $LRM_STATE_DIR/$distro/"
+    vlog2 "distro state: $LRM_STATE_DIR/$key/"
 }
 
 _lrm_ensure_distro_paths() {
     if [[ -n "${LRM_MIRROR_FILE:-}" ]]; then
         return 0
     fi
-    [[ -n "${LRM_DISTRO:-}" && -n "${LRM_STATE_DIR:-}" ]] || \
+    [[ -n "${LRM_DISTRO_ID:-}${LRM_DISTRO:-}" && -n "${LRM_STATE_DIR:-}" ]] || \
         die "$(_ 'internal error: call init_lrm and load_distro_backend before mirror commands')"
     lrm_set_distro_state
 }
