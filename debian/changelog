@@ -1,0 +1,16 @@
+repoman (1.1.0) testing; urgency=medium
+
+  * Add CSI-colored logging by verbosity level when terminfo supports it.
+  * Refactor user-visible strings to gettext; configure LOCALEDIR via Meson
+    with lookup order: source po/, build po/, installed localedir.
+  * Translate CLI help and messages (zh_CN, zh_TW, and other LINGUAS).
+  * Add po4a translated man pages where PO files exist.
+  * Rewrite README.md and README-zh.md for the bash-only lrm tool.
+
+ -- Lenik (谢继雷) <lenik@bodz.net>  Sun, 12 Jul 2026 21:30:00 +0800
+
+repoman (1.0.0) testing; urgency=medium
+
+  * Initial release
+
+ -- Lenik (谢继雷) <lenik@bodz.net>  Sat, 25 Apr 2026 22:07:24 +0800

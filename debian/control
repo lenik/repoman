@@ -1,0 +1,19 @@
+Source: repoman
+Section: utils
+Priority: optional
+Maintainer: Lenik <repoman@bodz.net>
+Build-Depends: debhelper-compat (= 13), meson, ninja-build, gettext, po4a
+Standards-Version: 4.6.0
+Homepage: https://github.com/lenik/repoman
+Rules-Requires-Root: no
+
+Package: repoman
+Architecture: all
+Depends:
+    ${misc:Depends}
+Recommends:
+    getbar,
+    iputils-ping
+Description: Linux repo manager (lrm)
+ repoman ships lrm, a Bash tool to manage and benchmark package mirrors
+ for apt, dnf/yum, and pacman, and apply the fastest mirror to the system.
