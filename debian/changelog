@@ -1,3 +1,18 @@
+repoman (1.3.0) testing; urgency=medium
+
+  * Support -o/--distro NAME:RELEASE (e.g. debian:bookworm); store mirror
+    state per release under ~/.config/repoman/lrm/DISTRO/RELEASE/. Auto-append
+    host VERSION_CODENAME or VERSION_ID when no release is given; migrate
+    legacy flat or unversioned state into the host release path.
+  * Seed archive and vault mirrors for EOL releases: Debian archive.debian.org
+    and debian-archive mirrors, Ubuntu old-releases.ubuntu.com, CentOS
+    vault.centos.org; probe URLs follow the specified suite or releasever.
+  * Add drm (Docker repo manager): list, benchmark, and apply registry mirrors
+    to /etc/docker/daemon.json via python3; built-in Docker Hub and Chinese
+    registry seeds; drm(1), bash completion, and gettext catalog.
+
+ -- Lenik (谢继雷) <lenik@bodz.net>  Mon, 13 Jul 2026 04:16:00 +0800
+
 repoman (1.2.0) testing; urgency=medium
 
   * Add -o/--distro NAME and -l/--list-distros; support 76 distribution
