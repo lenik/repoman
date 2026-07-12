@@ -255,7 +255,7 @@ main() {
         exit 1
     fi
 
-    export VERBOSE QUIET LRM_DISTRO
+    export VERBOSE QUIET LRM_DISTRO LRM_DISTRO_ID LRM_RELEASE LRM_DISTRO_KEY
     init_lrm
 
     local cmd="$1"

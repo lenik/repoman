@@ -23,8 +23,13 @@ creates it with built-in default mirrors for the selected distribution
 .BR \-o ", " \-\-distro
 is not used), including public mirrors such as 163 and Aliyun where
 available.
-Mirror lists are kept separately per distribution under
-.RI $XDG_CONFIG_HOME /repoman/lrm/ DISTRO / .
+Mirror lists are kept separately per distribution release under
+.RI $XDG_CONFIG_HOME /repoman/lrm/ NAME / RELEASE / .
+When no release is given on the command line, the host
+.B VERSION_CODENAME
+or
+.B VERSION_ID
+is appended when detected.
 .SH OPTIONS
 .TP
 .BR \-v ", " \-\-verbose
@@ -41,16 +46,24 @@ warnings, red errors).
 .BR \-q ", " \-\-quiet
 Reduce logging verbosity.
 .TP
-.BR \-o ", " \-\-distro " " NAME
+.BR \-o ", " \-\-distro " " SPEC
 Use package-manager backends and default mirrors for
-.IR NAME
+.IR SPEC
 instead of detecting the host from
 .BR /etc/os-release .
+.IR SPEC
+is
+.IR NAME
+or
+.IR NAME : RELEASE
+(for example
+.BR debian:bookworm ", " ubuntu:focal ", " centos:7 ).
+Archived releases automatically use archive or vault mirror URLs.
 Examples:
 .BR debian ", " ubuntu ", " fedora ", " uos ", " deepin ", " kylin ", " openeuler ", " arch ", " rpm .
 Use
 .BR \-\-list\-distros
-for the full list.
+for the full list of distribution names.
 .TP
 .BR \-l ", " \-\-list\-distros
 Print all supported distribution names and exit successfully.
