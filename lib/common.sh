@@ -140,11 +140,46 @@ init_lrm() {
     else
         LRM_STATE_DIR="$HOME/.config/repoman/lrm"
     fi
-    LRM_MIRROR_FILE="$LRM_STATE_DIR/mirrors"
-    LRM_DEFAULT_FILE="$LRM_STATE_DIR/default"
-    LRM_HEALTH_FILE="$LRM_STATE_DIR/health"
     mkdir -p "$LRM_STATE_DIR"
     vlog2 "state directory: $LRM_STATE_DIR"
+}
+
+_lrm_migrate_legacy_state() {
+    local distro="$1"
+    local legacy_mirror="$LRM_STATE_DIR/mirrors"
+    local legacy_default="$LRM_STATE_DIR/default"
+    local legacy_health="$LRM_STATE_DIR/health"
+
+    [[ -f "$legacy_mirror" && ! -f "$LRM_MIRROR_FILE" ]] && cp -a "$legacy_mirror" "$LRM_MIRROR_FILE"
+    [[ -f "$legacy_default" && ! -f "$LRM_DEFAULT_FILE" ]] && cp -a "$legacy_default" "$LRM_DEFAULT_FILE"
+    [[ -f "$legacy_health" && ! -f "$LRM_HEALTH_FILE" ]] && cp -a "$legacy_health" "$LRM_HEALTH_FILE"
+    if [[ -f "$legacy_mirror" ]]; then
+        vlog2 "migrated legacy state into $LRM_STATE_DIR/$distro/"
+    fi
+}
+
+lrm_set_distro_state() {
+    local distro="${LRM_DISTRO:?}"
+
+    [[ -n "${LRM_STATE_DIR:-}" ]] || die "$(_ 'internal error: call init_lrm before load_distro_backend')"
+
+    LRM_MIRROR_FILE="$LRM_STATE_DIR/$distro/mirrors"
+    LRM_DEFAULT_FILE="$LRM_STATE_DIR/$distro/default"
+    LRM_HEALTH_FILE="$LRM_STATE_DIR/$distro/health"
+    mkdir -p "$LRM_STATE_DIR/$distro"
+    _lrm_migrate_legacy_state "$distro"
+    invalidate_mirrors_cache
+    unset LRM_HEALTH_LOADED
+    vlog2 "distro state: $LRM_STATE_DIR/$distro/"
+}
+
+_lrm_ensure_distro_paths() {
+    if [[ -n "${LRM_MIRROR_FILE:-}" ]]; then
+        return 0
+    fi
+    [[ -n "${LRM_DISTRO:-}" && -n "${LRM_STATE_DIR:-}" ]] || \
+        die "$(_ 'internal error: call init_lrm and load_distro_backend before mirror commands')"
+    lrm_set_distro_state
 }
 
 health_load() {
@@ -163,6 +198,7 @@ health_load() {
 
 health_save() {
     local alias
+    _lrm_ensure_distro_paths
     : >"$LRM_HEALTH_FILE"
     for alias in "${!LRM_HEALTH[@]}"; do
         printf '%s\t%s\n' "$alias" "${LRM_HEALTH[$alias]}" >>"$LRM_HEALTH_FILE"
@@ -358,6 +394,8 @@ load_mirrors() {
         return 0
     fi
 
+    _lrm_ensure_distro_paths
+
     MIRROR_ALIASES=()
     MIRROR_PRIORITIES=()
     MIRROR_URLS=()
@@ -380,6 +418,8 @@ invalidate_mirrors_cache() {
 
 save_mirrors() {
     local i
+    _lrm_ensure_distro_paths
+    mkdir -p "$(dirname "$LRM_MIRROR_FILE")"
     : >"$LRM_MIRROR_FILE"
     for i in "${!MIRROR_ALIASES[@]}"; do
         printf '%s\t%s\t%s\n' \
