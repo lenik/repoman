@@ -1,0 +1,182 @@
+.TH lrm 1 "@PROJECT_YEAR@" "@PROJECT_VERSION@" "Benutzerbefehle"
+.SH NAME
+lrm \- Paketspiegel von Linux-Distributionen verwalten und benchmarken
+.SH ÜBERSICHT
+.B lrm
+.RI [ OPTION ]...
+.IR BEFEHL
+.RI [ ARGUMENTE ]...
+.SH BESCHREIBUNG
+Speichert Spiegel-Aliase und URLs, testet sie per Ping oder HTTP-Download
+und wendet den gewählten Spiegel auf die lokale Paketmanager-Konfiguration an.
+Unterstützte Distributionsfamilien werden über
+.BR /etc/os-release
+erkannt: Debian/Ubuntu (apt), RHEL-Familie (dnf/yum) und Arch (pacman).
+.PP
+Spiegeldefinitionen liegen unter
+.RI $XDG_CONFIG_HOME /repoman/lrm/ .
+Beim ersten Lauf, wenn dieses Verzeichnis noch nicht existiert, legt
+.B lrm
+eingebaute Standardspiegel für die erkannte Familie an (Debian, RPM oder Arch),
+einschließlich öffentlicher Spiegel wie 163 und Aliyun, sofern verfügbar.
+.SH OPTIONEN
+.TP
+.BR \-v ", " \-\-verbose
+Erhöht die Protokollierungsausführlichkeit. Mehrfach möglich
+.RB ( \-vv ", " \-vvv ", " \-vvvv ) :
+Stufe 1 protokolliert Tests pro Spiegel, 2 Pfade und Rechteerhöhung,
+3 Messwerte und Befehle, 4 Ausgabe externer Werkzeuge.
+Ist stderr ein Terminal und terminfo verfügbar, werden Zeilen farbig dargestellt
+(grün Fortschritt, cyan/blau/magenta/gedimmt Details, gelb Warnungen, rot Fehler).
+.TP
+.BR \-q ", " \-\-quiet
+Reduziert die Protokollausgabe.
+.TP
+.BR \-h ", " \-\-help
+Zeigt eine Nutzungsübersicht und beendet erfolgreich.
+.TP
+.B \-\-version
+Zeigt Versionsinformationen und beendet erfolgreich.
+.SH BEFEHLE
+.TP
+.B list
+Listet konfigurierte Spiegel als
+.IR KENNZEICHEN " [" N "] " ALIAS .
+Kennzeichen ist
+.BR * "(gewählt), " \- "(letzter Test fehlgeschlagen), " ? "(ungetestet) oder zwei Leerzeichen.
+.RB N
+ist eine einsbasierte Kurzwahl für
+.BR use " und " remove .
+Mit
+.BR \-p " oder " \-\-priority
+werden Priorität und URL mit ausgegeben.
+.TP
+.BR add " [[" \- PRIORITY "] | " \-p ", " \-\-priority " " N "] " ALIAS URL
+Fügt einen Spiegel hinzu oder aktualisiert ihn. Priorität als
+.BR \- N
+vor dem Alias oder mit
+.BR \-p
+(Standard 100; kleiner ist in der Liste bevorzugt).
+.TP
+.BR remove " " ALIAS\|NUM
+Entfernt einen Spiegel per Alias oder Listennummer.
+.TP
+.BR use " [" \-c ", " \-\-config\-only "] [" apply opts "] " ALIAS\|NUM
+Setzt den Standardspiegel und wendet ihn auf den System-Paketmanager an.
+.PP
+Debian-Anwendungsoptionen (Standard
+.BR \-\-all ):
+Komponenten
+.BR main ", " contrib ", " non-free ", " non-free-firmware ,
+.BR deb\-src ,
+suite-updates, Backports und Security-Stanza.
+Schalter:
+.BR \-a ", " \-\-all ", " \-s ", " \-\-src ", " \-u ", " \-\-updates ", " \-b ", " \-\-backports ", " \-\-security ", " \-\-suite .
+.PP
+RPM-Anwendungsoptionen (Standard nur BaseOS):
+.BR \-e ", " \-\-everything
+aktiviert BaseOS, AppStream und CRB/PowerTools;
+.BR \-E ", " \-\-epel
+fügt EPEL hinzu;
+.BR \-a ", " \-\-all
+aktiviert alles inklusive EPEL.
+Außerdem
+.BR \-\-releasever ", " \-\-arch ", " \-\-appstream ", " \-\-crb ", " \-\-powertools ", " \-\-minimal .
+Dieselben Optionen gelten für
+.BR pingsel " und " bwsel .
+.PP
+Mit
+.B \-\-config\-only
+wird nur
+.I /etc/apt/sources.list.d/lrm.sources
+geschrieben, ohne
+.BR apt\-get " update".
+Listennummer (z. B.
+.B 3
+) oder Alias (z. B.
+.BR tuna
+) verwenden.
+.TP
+.BR pingtest " [" \-n ", " \-\-count " " N "] [" \-W ", " \-\-timeout " " SEC "]"
+Pingt jeden Spiegel-Host parallel und sortiert nach Latenz und Paketverlust
+(Standard 3 Versuche, Timeout 2 Sekunden).
+.TP
+.BR bwtest " [" \-\-ref " " BYTES "]"
+Lädt Metadaten von jedem Spiegel parallel mit
+.BR getbar (1)
+herunter und sortiert nach Score. Jeder Test führt
+.RB getbar " -c -d2 -p1 -w3 -s30m -i.1 -q"
+auf der Sondier-URL aus.
+Der Score ist die effektive Byte/s-Rate für eine 3-MiB-Referenzdatei:
+.RI ref / ( offset + ref/bps ) ;
+Verbindungslatenz wiegt bei schnellen Spiegeln stärker.
+Sinkt der Durchsatz vor Erreichen der Referenzgröße, senkt die Regressionsneigung den Score.
+Referenzgröße überschreiben mit
+.BR \-\-ref
+oder
+.IR LRM_BWTEST_REF_BYTES .
+.TP
+.BR pingsel " [" apply opts "] [" \-n ", " \-\-count " " N "] [" \-W ", " \-\-timeout " " SEC "]"
+Führt
+.B pingtest
+aus und wendet den besten Spiegel an (gleiche Optionen wie
+.BR use ).
+.TP
+.BR bwsel " [" apply opts "] [" \-\-ref " " BYTES "]"
+Führt
+.B bwtest
+aus und wendet den besten Spiegel an (gleiche Optionen wie
+.BR use ).
+.TP
+.B help
+Zeigt die Nutzung.
+.TP
+.B version
+Zeigt die Version.
+.SH INTERNATIONALISIERUNG
+Benutzersichtbare Meldungen nutzen gettext (Textdomäne
+.BR lrm ).
+Kataloge werden in der Quell-
+.I po/,
+im Build-Baum und im installierten Locale-Verzeichnis gesucht.
+Setzen Sie
+.BR LANGUAGE ", " LC_ALL " oder " LANG
+zur Sprachwahl (z. B.
+.BR de ).
+.SH DATEIEN
+.TP
+.I ~/.config/repoman/lrm/mirrors
+Tab-getrennte Spiegeldatenbank:
+.IR alias ", " priorität ", " url .
+.TP
+.I ~/.config/repoman/lrm/default
+Alias des aktuell gewählten Spiegels.
+.TP
+.I ~/.config/repoman/lrm/health
+Letztes ping/bwtest-Ergebnis pro Spiegel (
+.BR ok " oder " bad ).
+.TP
+.I /etc/apt/sources.list.d/lrm.sources
+Angewandter Debian/Ubuntu-Spiegel (deb822-Format).
+.TP
+.I /etc/yum.repos.d/lrm.repo
+Angewandter RPM-Familien-Spiegel.
+.TP
+.I /etc/pacman.d/mirrorlist
+Angewandte Arch-Spiegelliste.
+.SH BEISPIELE
+.TP
+Spiegel hinzufügen und auflisten:
+.B lrm add -10 tuna https://mirrors.tuna.tsinghua.edu.cn/debian
+.br
+.B lrm add ustc https://mirrors.ustc.edu.cn/debian
+.br
+.B lrm list
+.TP
+Benchmark und schnellsten Spiegel wählen:
+.B lrm bwsel
+.SH AUTOR
+@PROJECT_AUTHOR@ <@PROJECT_EMAIL@>
+.SH URHEBERRECHT
+Copyright \(co @PROJECT_YEAR@.
+Lizenz AGPL-3.0-or-later.

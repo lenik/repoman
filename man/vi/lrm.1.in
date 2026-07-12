@@ -1,0 +1,180 @@
+.TH lrm 1 "@PROJECT_YEAR@" "@PROJECT_VERSION@" "Lệnh người dùng"
+.SH TÊN
+lrm \- quản lý và đo tốc độ mirror gói phần mềm Linux
+.SH TÓM TẮT
+.B lrm
+.RI [ TÙY_CHỌN ]...
+.IR LỆNH
+.RI [ ĐỐI_SỐ ]...
+.SH MÔ TẢ
+Lưu bí danh và URL mirror, đo bằng ping hoặc tải HTTP, rồi áp mirror đã chọn
+vào cấu hình trình quản lý gói cục bộ. Họ phân phối được nhận diện từ
+.BR /etc/os-release :
+Debian/Ubuntu (apt), họ RHEL (dnf/yum) và Arch (pacman).
+.PP
+Định nghĩa mirror nằm tại
+.RI $XDG_CONFIG_HOME /repoman/lrm/ .
+Lần chạy đầu khi thư mục chưa tồn tại,
+.B lrm
+tạo mirror mặc định sẵn có cho họ đã nhận diện (Debian, RPM hoặc Arch),
+gồm mirror công cộng như 163 và Aliyun khi có.
+.SH TÙY CHỌN
+.TP
+.BR \-v ", " \-\-verbose
+Tăng mức chi tiết nhật ký, có thể lặp
+.RB ( \-vv ", " \-vvv ", " \-vvvv ) :
+mức 1 ghi từng mirror, 2 ghi đường dẫn và quyền, 3 ghi đo lường và lệnh,
+4 ghi đầu ra công cụ ngoài. Khi stderr là terminal và có terminfo, dòng được tô màu
+theo mức (xanh lá tiến trình, xanh lam/xanh dương/tím/nhạt chi tiết, vàng cảnh báo, đỏ lỗi).
+.TP
+.BR \-q ", " \-\-quiet
+Giảm nhật ký.
+.TP
+.BR \-h ", " \-\-help
+In tóm tắt cách dùng và thoát thành công.
+.TP
+.B \-\-version
+In thông tin phiên bản và thoát thành công.
+.SH LỆNH
+.TP
+.B list
+Liệt kê mirror đã cấu hình dạng
+.IR DẤU " [" N "] " BÍ_DANH .
+Dấu là
+.BR * "(đã chọn), " \- "(lần thử trước thất bại), " ? "(chưa thử) hoặc hai khoảng trắng.
+.RB N
+là số thứ tự bắt đầu từ 1 mà
+.BR use " và " remove
+chấp nhận.
+Với
+.BR \-p " hoặc " \-\-priority
+cũng in ưu tiên và URL.
+.TP
+.BR add " [[" \- PRIORITY "] | " \-p ", " \-\-priority " " N "] " ALIAS URL
+Thêm hoặc cập nhật mirror. Ưu tiên đặt
+.BR \- N
+trước bí danh hoặc dùng
+.BR \-p
+(mặc định 100, số nhỏ hơn xếp trước trong danh sách).
+.TP
+.BR remove " " ALIAS\|NUM
+Xóa mirror theo bí danh hoặc số trong danh sách.
+.TP
+.BR use " [" \-c ", " \-\-config\-only "] [" apply opts "] " ALIAS\|NUM
+Đặt mirror mặc định và áp vào trình quản lý gói hệ thống.
+.PP
+Tùy chọn áp Debian (mặc định
+.BR \-\-all ):
+.BR main ", " contrib ", " non-free ", " non-free-firmware
+thành phần,
+.BR deb\-src ,
+suite-updates, backports và security.
+Cờ:
+.BR \-a ", " \-\-all ", " \-s ", " \-\-src ", " \-u ", " \-\-updates ", " \-b ", " \-\-backports ", " \-\-security ", " \-\-suite .
+.PP
+Tùy chọn áp RPM (mặc định chỉ BaseOS):
+.BR \-e ", " \-\-everything
+bật BaseOS, AppStream và CRB/PowerTools;
+.BR \-E ", " \-\-epel
+thêm EPEL;
+.BR \-a ", " \-\-all
+bật tất cả kèm EPEL.
+Cũng có
+.BR \-\-releasever ", " \-\-arch ", " \-\-appstream ", " \-\-crb ", " \-\-powertools ", " \-\-minimal .
+Cùng tùy chọn áp dụng cho
+.BR pingsel " và " bwsel .
+.PP
+Dùng
+.B \-\-config\-only
+để chỉ ghi
+.I /etc/apt/sources.list.d/lrm.sources
+mà không chạy
+.BR apt\-get " update".
+Dùng số danh sách (ví dụ
+.B 3
+) hoặc bí danh (ví dụ
+.BR tuna ).
+.TP
+.BR pingtest " [" \-n ", " \-\-count " " N "] [" \-W ", " \-\-timeout " " SEC "]"
+Ping song song từng host mirror, sắp xếp theo độ trễ và mất gói
+(mặc định 3 lần, hết giờ 2 giây).
+.TP
+.BR bwtest " [" \-\-ref " " BYTES "]"
+Tải metadata từ mỗi mirror song song bằng
+.BR getbar (1)
+và in theo điểm. Mỗi lần chạy
+.RB getbar " -c -d2 -p1 -w3 -s30m -i.1 -q"
+trên URL thăm dò.
+Điểm là byte/giây hiệu dụng cho tệp tham chiếu 3 MiB:
+.RI ref / ( offset + ref/bps ) ,
+độ trễ kết nối quan trọng hơn với mirror nhanh và ít hơn khi truyền chậm.
+Nếu thông lượng giảm trước khi đạt kích thước tham chiếu, độ dốc hồi quy giảm điểm.
+Ghi đè kích thước tham chiếu bằng
+.BR \-\-ref
+hoặc
+.IR LRM_BWTEST_REF_BYTES .
+.TP
+.BR pingsel " [" apply opts "] [" \-n ", " \-\-count " " N "] [" \-W ", " \-\-timeout " " SEC "]"
+Chạy
+.B pingtest
+và áp mirror tốt nhất (cùng tùy chọn áp như
+.BR use ).
+.TP
+.BR bwsel " [" apply opts "] [" \-\-ref " " BYTES "]"
+Chạy
+.B bwtest
+và áp mirror tốt nhất (cùng tùy chọn áp như
+.BR use ).
+.TP
+.B help
+Hiện cách dùng.
+.TP
+.B version
+Hiện phiên bản.
+.SH QUỐC TẾ HÓA
+Thông báo dùng gettext (miền văn bản
+.BR lrm ).
+Danh mục thông điệp tìm theo thứ tự
+.I po/
+nguồn, cây build, rồi thư mục locale đã cài.
+Đặt
+.BR LANGUAGE ", " LC_ALL " hoặc " LANG
+để chọn ngôn ngữ (ví dụ
+.BR vi ).
+.SH TỆP
+.TP
+.I ~/.config/repoman/lrm/mirrors
+Cơ sở mirror phân tách bằng tab:
+.IR bí_danh ", " ưu_tiên ", " url .
+.TP
+.I ~/.config/repoman/lrm/default
+Bí danh mirror đang chọn.
+.TP
+.I ~/.config/repoman/lrm/health
+Kết quả ping/bwtest gần nhất mỗi mirror (
+.BR ok " hoặc " bad ).
+.TP
+.I /etc/apt/sources.list.d/lrm.sources
+Mirror Debian/Ubuntu đã áp (định dạng deb822).
+.TP
+.I /etc/yum.repos.d/lrm.repo
+Mirror họ RPM đã áp.
+.TP
+.I /etc/pacman.d/mirrorlist
+Danh sách mirror Arch đã áp.
+.SH VÍ DỤ
+.TP
+Thêm mirror và liệt kê:
+.B lrm add -10 tuna https://mirrors.tuna.tsinghua.edu.cn/debian
+.br
+.B lrm add ustc https://mirrors.ustc.edu.cn/debian
+.br
+.B lrm list
+.TP
+Đo và chọn mirror nhanh nhất:
+.B lrm bwsel
+.SH TÁC GIẢ
+@PROJECT_AUTHOR@ <@PROJECT_EMAIL@>
+.SH BẢN QUYỀN
+Copyright \(co @PROJECT_YEAR@.
+Giấy phép AGPL-3.0-or-later.

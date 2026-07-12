@@ -1,0 +1,175 @@
+.TH lrm 1 "@PROJECT_YEAR@" "@PROJECT_VERSION@" "ユーザーコマンド"
+.SH 名称
+lrm \- Linux ディストリビューションのパッケージミラーを管理・ベンチマークする
+.SH 概要
+.B lrm
+.RI [ オプション ]...
+.IR コマンド
+.RI [ 引数 ]...
+.SH 説明
+ミラー別名と URL を保存し、ping または HTTP ダウンロードテストでベンチマークし、
+選択したミラーをローカルのパッケージマネージャ設定に適用する。対応ディストリビューション
+ファミリーは
+.BR /etc/os-release
+から検出する：Debian/Ubuntu（apt）、RHEL 系（dnf/yum）、Arch（pacman）。
+.PP
+ミラー定義は
+.RI $XDG_CONFIG_HOME /repoman/lrm/
+に保存される。初回実行時にそのディレクトリがまだ無い場合、
+.B lrm
+は検出されたファミリー（Debian、RPM、Arch）向けの組み込みデフォルトミラーを
+作成する（利用可能な場合は 163 や Aliyun などの公開ミラーを含む）。
+.SH オプション
+.TP
+.BR \-v ", " \-\-verbose
+ログの詳細度を上げる。繰り返し指定可能
+.RB ( \-vv ", " \-vvv ", " \-vvvv ) ：
+レベル 1 は各ミラーのテスト、2 はパスと権限昇格、3 は測定値とコマンド、
+4 は外部ツールの出力。標準エラーが端末で terminfo が使える場合、
+レベルごとに色分けされる（緑の進捗、シアン/青/マゼンタ/薄い詳細、黄の警告、赤のエラー）。
+.TP
+.BR \-q ", " \-\-quiet
+ログ出力を減らす。
+.TP
+.BR \-h ", " \-\-help
+用法の要約を表示して正常終了する。
+.TP
+.B \-\-version
+バージョン情報を表示して正常終了する。
+.SH コマンド
+.TP
+.B list
+設定済みミラーを
+.IR 印 " [" N "] " 別名
+の形式で一覧表示する。
+印は
+.BR * "（選択中）、" \- "（前回テスト失敗）、" ? "（未テスト）、または空白二つ。
+.RB N
+は
+.BR use " および " remove
+が受け付ける 1 始まりのショートカット。
+.BR \-p " または " \-\-priority
+で優先度と URL も表示する。
+.TP
+.BR add " [[" \- PRIORITY "] | " \-p ", " \-\-priority " " N "] " ALIAS URL
+ミラーを追加または更新する。優先度は別名の前に
+.BR \- N
+を付けるか
+.BR \-p
+で指定する（既定 100、小さいほど一覧で上位）。
+.TP
+.BR remove " " ALIAS\|NUM
+別名または一覧番号でミラーを削除する。
+.TP
+.BR use " [" \-c ", " \-\-config\-only "] [" apply opts "] " ALIAS\|NUM
+デフォルトミラーを設定し、システムのパッケージマネージャに適用する。
+.PP
+Debian 適用オプション（既定
+.BR \-\-all ):
+.BR main ", " contrib ", " non-free ", " non-free-firmware
+コンポーネント、
+.BR deb\-src ,
+suite-updates、backports、security スタンザ。フラグ：
+.BR \-a ", " \-\-all ", " \-s ", " \-\-src ", " \-u ", " \-\-updates ", " \-b ", " \-\-backports ", " \-\-security ", " \-\-suite .
+.PP
+RPM 適用オプション（既定は BaseOS のみ）：
+.BR \-e ", " \-\-everything
+で BaseOS、AppStream、CRB/PowerTools を有効化；
+.BR \-E ", " \-\-epel
+で EPEL を追加；
+.BR \-a ", " \-\-all
+ですべてと EPEL を有効化。ほかに
+.BR \-\-releasever ", " \-\-arch ", " \-\-appstream ", " \-\-crb ", " \-\-powertools ", " \-\-minimal .
+同じ適用オプションは
+.BR pingsel " および " bwsel
+でも使える。
+.PP
+.B \-\-config\-only
+で
+.I /etc/apt/sources.list.d/lrm.sources
+のみ書き込み、
+.BR apt\-get " update"
+は実行しない。一覧番号（例
+.B 3
+）または別名（例
+.BR tuna
+）を指定できる。
+.TP
+.BR pingtest " [" \-n ", " \-\-count " " N "] [" \-W ", " \-\-timeout " " SEC "]"
+各ミラーホストへ並列 ping し、遅延とパケット損失で並べ替える（既定回数 3、タイムアウト 2 秒）。
+.TP
+.BR bwtest " [" \-\-ref " " BYTES "]"
+.BR getbar (1)
+で各ミラーからメタデータを並列ダウンロードし、スコア順に表示する。各テストは
+プローブ URL に対し
+.RB getbar " -c -d2 -p1 -w3 -s30m -i.1 -q"
+を実行する。スコアは 3 MiB 参照ファイルの実効バイト/秒：
+.RI ref / ( offset + ref/bps ) 。
+接続遅延は高速ミラーでより影響し、転送自体が遅い場合は影響が小さい。
+参照サイズ到達前にスループットが低下すると線形フィットの傾きでスコアが下がる。
+.BR \-\-ref
+または
+.IR LRM_BWTEST_REF_BYTES
+で参照サイズを上書きできる。
+.TP
+.BR pingsel " [" apply opts "] [" \-n ", " \-\-count " " N "] [" \-W ", " \-\-timeout " " SEC "]"
+.B pingtest
+を実行し最良ミラーを適用する（
+.BR use " と同じ適用オプション）。
+.TP
+.BR bwsel " [" apply opts "] [" \-\-ref " " BYTES "]"
+.B bwtest
+を実行し最良ミラーを適用する（
+.BR use " と同じ適用オプション）。
+.TP
+.B help
+用法を表示する。
+.TP
+.B version
+バージョンを表示する。
+.SH 国際化
+ユーザー向けメッセージは gettext（テキストドメイン
+.BR lrm ）。
+メッセージカタログはソースの
+.I po/
+、ビルドツリー、インストール済み locale ディレクトリの順で検索する。
+.BR LANGUAGE "、" LC_ALL "、または " LANG
+で言語を選択する（例
+.BR ja ）。
+.SH ファイル
+.TP
+.I ~/.config/repoman/lrm/mirrors
+タブ区切りのミラー DB：
+.IR 別名 ", " 優先度 ", " url 。
+.TP
+.I ~/.config/repoman/lrm/default
+現在選択中のミラー別名。
+.TP
+.I ~/.config/repoman/lrm/health
+各ミラーの前回 ping/bwtest 結果（
+.BR ok " または " bad ）。
+.TP
+.I /etc/apt/sources.list.d/lrm.sources
+適用済み Debian/Ubuntu ミラー（deb822 形式）。
+.TP
+.I /etc/yum.repos.d/lrm.repo
+適用済み RPM 系ミラー。
+.TP
+.I /etc/pacman.d/mirrorlist
+適用済み Arch ミラーリスト。
+.SH 例
+.TP
+ミラーを追加して一覧表示：
+.B lrm add -10 tuna https://mirrors.tuna.tsinghua.edu.cn/debian
+.br
+.B lrm add ustc https://mirrors.ustc.edu.cn/debian
+.br
+.B lrm list
+.TP
+ベンチマークして最速を選択：
+.B lrm bwsel
+.SH 著者
+@PROJECT_AUTHOR@ <@PROJECT_EMAIL@>
+.SH 著作権
+Copyright \(co @PROJECT_YEAR@.
+ライセンス AGPL-3.0-or-later。

@@ -1,0 +1,182 @@
+.TH lrm 1 "@PROJECT_YEAR@" "@PROJECT_VERSION@" "Uzantaj komandoj"
+.SH NOMO
+lrm \- administri kaj mezuri spegulojn de paketoj por Linux-distribuaĵoj
+.SH SINTAKSO
+.B lrm
+.RI [ OPCIO ]...
+.IR KOMANDO
+.RI [ ARGUMENTOJ ]...
+.SH PRISKRIBO
+.B lrm
+stokas kromnomojn kaj URL-ojn de speguloj, mezuras ilin per ping aŭ HTTP-elŝuto,
+kaj aplikas la elektitan spegulon al la loka pakaĵadministra agordo.
+Subtenataj distribuaj familioj estas detektitaj el
+.BR /etc/os-release :
+Debian/Ubuntu (apt), RHEL-familio (dnf/yum) kaj Arch (pacman).
+.PP
+Spegulaj difinoj estas sub
+.RI $XDG_CONFIG_HOME /repoman/lrm/ .
+Je la unua rulo, kiam tiu dosierujo ankoraŭ ne ekzistas,
+.B lrm
+kreas enkonstruitajn defaŭltajn spegulojn por la detektita familio
+(Debian, RPM aŭ Arch), inkluzive publikajn spegulojn kiel 163 kaj Aliyun kiam disponeblaj.
+.SH OPCIOJ
+.TP
+.BR \-v ", " \-\-verbose
+Pliigas protokolan detalecon. Ripetebla
+.RB ( \-vv ", " \-vvv ", " \-vvvv ) :
+nivelo 1 protokolas testojn po spegulo, 2 vojojn kaj privilegian altigon,
+3 mezurojn kaj komandojn, 4 eliron de eksteraj iloj.
+Kiam stderr estas terminalo kaj terminfo disponeblas, linioj estas kolorigitaj
+(verda progreso, cyan/blua/magenta/malhela detaloj, flava avertoj, ruĝa eraroj).
+.TP
+.BR \-q ", " \-\-quiet
+Malpliigas protokolan eliron.
+.TP
+.BR \-h ", " \-\-help
+Montras resumon de uzo kaj eliras sukcese.
+.TP
+.B \-\-version
+Montras versiinformon kaj eliras sukcese.
+.SH KOMANDOJ
+.TP
+.B list
+Listigas agorditajn spegulojn kiel
+.IR MARKO " [" N "] " KROMNOMO .
+Marko estas
+.BR * "(elektita), " \- "(lasta testo malsukcesis), " ? "(netestita) aŭ du spacoj.
+.RB N
+estas unubaza numero akceptata de
+.BR use " kaj " remove .
+Kun
+.BR \-p " aŭ " \-\-priority
+ankaŭ montras prioritaton kaj URL.
+.TP
+.BR add " [[" \- PRIORITY "] | " \-p ", " \-\-priority " " N "] " ALIAS URL
+Aldonas aŭ ĝisdatigas spegulon. Prioritato per
+.BR \- N
+antaŭ la kromnomo aŭ per
+.BR \-p
+(defaŭlte 100; pli malgranda valoroj preferiĝas en la listo).
+.TP
+.BR remove " " ALIAS\|NUM
+Forigas spegulon laŭ kromnomo aŭ listnumero.
+.TP
+.BR use " [" \-c ", " \-\-config\-only "] [" apply opts "] " ALIAS\|NUM
+Agordas la defaŭltan spegulon kaj aplikas ĝin al la sistema pakaĵadministrilo.
+.PP
+Debian-aplika opcioj (defaŭlte
+.BR \-\-all ):
+komponantoj
+.BR main ", " contrib ", " non-free ", " non-free-firmware ,
+.BR deb\-src ,
+suite-updates, backports kaj security-stanza.
+Flagoj:
+.BR \-a ", " \-\-all ", " \-s ", " \-\-src ", " \-u ", " \-\-updates ", " \-b ", " \-\-backports ", " \-\-security ", " \-\-suite .
+.PP
+RPM-aplika opcioj (defaŭlte nur BaseOS):
+.BR \-e ", " \-\-everything
+ebligas BaseOS, AppStream kaj CRB/PowerTools;
+.BR \-E ", " \-\-epel
+aldonas EPEL;
+.BR \-a ", " \-\-all
+ebligas ĉion plus EPEL.
+Ankaŭ
+.BR \-\-releasever ", " \-\-arch ", " \-\-appstream ", " \-\-crb ", " \-\-powertools ", " \-\-minimal .
+Samaj aplikaj opcioj validas por
+.BR pingsel " kaj " bwsel .
+.PP
+Uzu
+.B \-\-config\-only
+por skribi nur
+.I /etc/apt/sources.list.d/lrm.sources
+sen ruli
+.BR apt\-get " update".
+Uzu listnumeron (ekz.
+.B 3
+) aŭ kromnomon (ekz.
+.BR tuna ).
+.TP
+.BR pingtest " [" \-n ", " \-\-count " " N "] [" \-W ", " \-\-timeout " " SEC "]"
+Pingas ĉiun spegulan gastiganton paralele kaj ordigas laŭ latenco kaj paketperdo
+(defaŭlte 3 provoj, tempolimo 2 sekundoj).
+.TP
+.BR bwtest " [" \-\-ref " " BYTES "]"
+Elŝutas metadatenaron de ĉiu spegulo paralele per
+.BR getbar (1)
+kaj ordigas laŭ poentaro. Ĉiu testo rulas
+.RB getbar " -c -d2 -p1 -w3 -s30m -i.1 -q"
+sur la sondada URL.
+Poentaro estas efektiva bajtoj/sekundo por 3 MiB-referenca dosiero:
+.RI ref / ( offset + ref/bps ) ;
+konekta latenco pli gravas por rapidaj speguloj.
+Malkreskanta lineara adaptado malpliigas la poentaron se rendimento falas antaŭ la referenca grandeco.
+Anstataŭigu la referencan grandecon per
+.BR \-\-ref
+aŭ
+.IR LRM_BWTEST_REF_BYTES .
+.TP
+.BR pingsel " [" apply opts "] [" \-n ", " \-\-count " " N "] [" \-W ", " \-\-timeout " " SEC "]"
+Rulas
+.B pingtest
+kaj aplikas la plej bonan spegulon (samaj opcioj kiel
+.BR use ).
+.TP
+.BR bwsel " [" apply opts "] [" \-\-ref " " BYTES "]"
+Rulas
+.B bwtest
+kaj aplikas la plej bonan spegulon (samaj opcioj kiel
+.BR use ).
+.TP
+.B help
+Montras uzadon.
+.TP
+.B version
+Montras version.
+.SH INTERNAZIIGO
+Uzantvideblaj mesaĝoj uzas gettext (tekstdomajno
+.BR lrm ).
+Mesaĝkatalogoj estas serĉataj en la fonta
+.I po/,
+konstrua arbo kaj instalita locale-dosierujo.
+Agordu
+.BR LANGUAGE ", " LC_ALL " aŭ " LANG
+por elekti lingvon (ekz.
+.BR eo ).
+.SH DOSIEROJ
+.TP
+.I ~/.config/repoman/lrm/mirrors
+Tab-disigita spegula datumbazo:
+.IR kromnomo ", " prioritato ", " url .
+.TP
+.I ~/.config/repoman/lrm/default
+Kromnomo de la nune elektita spegulo.
+.TP
+.I ~/.config/repoman/lrm/health
+Lasta ping/bwtest-rezulto po spegulo (
+.BR ok " aŭ " bad ).
+.TP
+.I /etc/apt/sources.list.d/lrm.sources
+Aplikita Debian/Ubuntu-spegulo (deb822-formo).
+.TP
+.I /etc/yum.repos.d/lrm.repo
+Aplikita RPM-familia spegulo.
+.TP
+.I /etc/pacman.d/mirrorlist
+Aplikita Arch-spegullisto.
+.SH EKZEMPLOJ
+.TP
+Aldoni spegulojn kaj listigi:
+.B lrm add -10 tuna https://mirrors.tuna.tsinghua.edu.cn/debian
+.br
+.B lrm add ustc https://mirrors.ustc.edu.cn/debian
+.br
+.B lrm list
+.TP
+Mezuri kaj elekti la plej rapidan:
+.B lrm bwsel
+.SH AŬTORO
+@PROJECT_AUTHOR@ <@PROJECT_EMAIL@>
+.SH KOPIRAJTO
+Copyright \(co @PROJECT_YEAR@.
+Licenco AGPL-3.0-or-later.

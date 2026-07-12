@@ -84,31 +84,30 @@ install_data(
     install_dir: pkgdocdir,
 )
 
+readme_langs = ['zh_CN', 'zh_TW', 'ja', 'ko', 'th', 'vi', 'fr', 'de', 'it', 'eo']
+doc_install = ['README.md']
+foreach lang : readme_langs
+    doc_install += 'README-' + lang + '.md'
+endforeach
+
 install_data(
-    'README.md',
+    doc_install,
     install_dir: pkgdocdir,
 )
 
 # Backward-compatible alias for Chinese readme.
 install_data(
-    'doc/README-zh_CN.md',
+    'README-zh_CN.md',
     install_dir: pkgdocdir,
     rename: 'README-zh.md',
 )
 
-doc_langs = ['zh_CN', 'zh_TW', 'ja', 'ko', 'th', 'vi', 'fr', 'de', 'it', 'eo']
-foreach lang : doc_langs
-    readme_src = 'doc/README-' + lang + '.md'
-    if fs.exists(readme_src)
-        install_data(
-            readme_src,
-            install_dir: pkgdocdir,
-        )
-    endif
-    man_src = 'po/lrm.1-' + lang + '.in'
-    if fs.exists(man_src)
+manpage_langs = ['de', 'eo', 'fr', 'it', 'ja', 'ko', 'th', 'vi', 'zh_CN', 'zh_TW']
+foreach lang : manpage_langs
+    manin = 'man' / lang / 'lrm.1.in'
+    if fs.is_file(meson.current_source_dir() / manin)
         man_out = configure_file(
-            input: man_src,
+            input: manin,
             output: 'lrm.1-' + lang,
             configuration: project_config,
         )

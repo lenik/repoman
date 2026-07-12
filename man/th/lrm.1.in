@@ -1,0 +1,183 @@
+.TH lrm 1 "@PROJECT_YEAR@" "@PROJECT_VERSION@" "คำสั่งผู้ใช้"
+.SH ชื่อ
+lrm \- จัดการและทดสอบมิเรอร์แพ็กเกจของดิสโทร Linux
+.SH รูปแบบ
+.B lrm
+.RI [ ตัวเลือก ]...
+.IR คำสั่ง
+.RI [ อาร์กิวเมนต์ ]...
+.SH คำอธิบาย
+เก็บชื่อเล่นและ URL ของมิเรอร์ ทดสอบด้วย ping หรือการดาวน์โหลด HTTP
+แล้วนำมิเรอร์ที่เลือกไปใช้กับการตั้งค่าตัวจัดการแพ็กเกจในเครื่อง
+ครอบครัวดิสโทรที่รองรับตรวจจาก
+.BR /etc/os-release :
+Debian/Ubuntu (apt), ตระกูล RHEL (dnf/yum) และ Arch (pacman)
+.PP
+นิยามมิเรอร์อยู่ที่
+.RI $XDG_CONFIG_HOME /repoman/lrm/ .
+เมื่อรันครั้งแรกและยังไม่มีไดเรกทอรีนี้
+.B lrm
+จะสร้างมิเรอร์เริ่มต้นในตัวสำหรับครอบครัวที่ตรวจพบ (Debian, RPM หรือ Arch)
+รวมมิเรอร์สาธารณะเช่น 163 และ Aliyun เมื่อมีให้ใช้
+.SH ตัวเลือก
+.TP
+.BR \-v ", " \-\-verbose
+เพิ่มระดับความละเอียดของบันทึก ใช้ซ้ำได้
+.RB ( \-vv ", " \-vvv ", " \-vvvv ) :
+ระดับ 1 บันทึกการทดสอบแต่ละมิเรอร์ ระดับ 2 เส้นทางและการยกสิทธิ์
+ระดับ 3 ค่าวัดและคำสั่ง ระดับ 4 ผลลัพธ์เครื่องมือภายนอก
+เมื่อ stderr เป็นเทอร์มินัลและมี terminfo จะใส่สีตามระดับ
+(เขียวความคืบหน้า ฟ้า/น้ำเงิน/ม่วงแดง/จางสำหรับรายละเอียด เหลืองคำเตือน แดงข้อผิดพลาด)
+.TP
+.BR \-q ", " \-\-quiet
+ลดการบันทึก
+.TP
+.BR \-h ", " \-\-help
+แสดงสรุปการใช้งานแล้วออกด้วยสถานะสำเร็จ
+.TP
+.B \-\-version
+แสดงข้อมูลเวอร์ชันแล้วออกด้วยสถานะสำเร็จ
+.SH คำสั่ง
+.TP
+.B list
+แสดงมิเรอร์ที่ตั้งค่าในรูปแบบ
+.IR เครื่องหมาย " [" N "] " ชื่อเล่น
+เครื่องหมายคือ
+.BR * "(ที่เลือก), " \- "(ทดสอบล่าสุดล้มเหลว), " ? "(ยังไม่ทดสอบ) หรือช่องว่างสองตัว
+.RB N
+คือลำดับเริ่มที่ 1 ที่
+.BR use " และ " remove
+รับ
+ด้วย
+.BR \-p " หรือ " \-\-priority
+จะแสดงลำดับความสำคัญและ URL ด้วย
+.TP
+.BR add " [[" \- PRIORITY "] | " \-p ", " \-\-priority " " N "] " ALIAS URL
+เพิ่มหรืออัปเดตมิเรอร์ ลำดับความสำคัญใส่
+.BR \- N
+ก่อนชื่อเล่นหรือใช้
+.BR \-p
+(ค่าเริ่มต้น 100 ค่าน้อยแสดงก่อนในรายการ)
+.TP
+.BR remove " " ALIAS\|NUM
+ลบมิเรอร์ตามชื่อเล่นหรือหมายเลขในรายการ
+.TP
+.BR use " [" \-c ", " \-\-config\-only "] [" apply opts "] " ALIAS\|NUM
+ตั้งมิเรอร์เริ่มต้นและนำไปใช้กับตัวจัดการแพ็กเกจของระบบ
+.PP
+ตัวเลือก Debian (ค่าเริ่มต้น
+.BR \-\-all ):
+.BR main ", " contrib ", " non-free ", " non-free-firmware
+คอมโพเนนต์
+.BR deb\-src ,
+suite-updates, backports และ security
+แฟล็ก:
+.BR \-a ", " \-\-all ", " \-s ", " \-\-src ", " \-u ", " \-\-updates ", " \-b ", " \-\-backports ", " \-\-security ", " \-\-suite .
+.PP
+ตัวเลือก RPM (ค่าเริ่มต้นเฉพาะ BaseOS):
+.BR \-e ", " \-\-everything
+เปิด BaseOS, AppStream และ CRB/PowerTools
+.BR \-E ", " \-\-epel
+เพิ่ม EPEL
+.BR \-a ", " \-\-all
+เปิดทั้งหมดรวม EPEL
+นอกจากนี้
+.BR \-\-releasever ", " \-\-arch ", " \-\-appstream ", " \-\-crb ", " \-\-powertools ", " \-\-minimal
+ตัวเลือกเดียวกันใช้กับ
+.BR pingsel " และ " bwsel
+.PP
+ใช้
+.B \-\-config\-only
+เพื่อเขียน
+.I /etc/apt/sources.list.d/lrm.sources
+โดยไม่รัน
+.BR apt\-get " update"
+ใช้หมายเลขในรายการ (เช่น
+.B 3
+) หรือชื่อเล่น (เช่น
+.BR tuna )
+.TP
+.BR pingtest " [" \-n ", " \-\-count " " N "] [" \-W ", " \-\-timeout " " SEC "]"
+ping โฮสต์มิเรอร์แบบขนาน เรียงตามความหน่วงและการสูญเสียแพ็กเก็ต
+(ค่าเริ่มต้น 3 ครั้ง หมดเวลา 2 วินาที)
+.TP
+.BR bwtest " [" \-\-ref " " BYTES "]"
+ดาวน์โหลดเมทาดาทาจากแต่ละมิเรอร์แบบขนานด้วย
+.BR getbar (1)
+แล้วเรียงตามคะแนน แต่ละการทดสอบรัน
+.RB getbar " -c -d2 -p1 -w3 -s30m -i.1 -q"
+บน URL สำรวจ
+คะแนนคือไบต์/วินาทีที่มีประสิทธิภาพสำหรับไฟล์อ้างอิง 3 MiB:
+.RI ref / ( offset + ref/bps )
+ความหน่วงการเชื่อมมีผลมากกับมิเรอร์เร็ว และน้อยเมื่อการถ่ายโอนช้า
+หาก throughput ลดก่อนถึงขนาดอ้างอิง ความชันของการปรับเส้นจะลดคะแนน
+ใช้
+.BR \-\-ref
+หรือ
+.IR LRM_BWTEST_REF_BYTES
+เพื่อกำหนดขนาดอ้างอิง
+.TP
+.BR pingsel " [" apply opts "] [" \-n ", " \-\-count " " N "] [" \-W ", " \-\-timeout " " SEC "]"
+รัน
+.B pingtest
+แล้วนำมิเรอร์ที่ดีที่สุดไปใช้ (ตัวเลือกเดียวกับ
+.BR use )
+.TP
+.BR bwsel " [" apply opts "] [" \-\-ref " " BYTES "]"
+รัน
+.B bwtest
+แล้วนำมิเรอร์ที่ดีที่สุดไปใช้ (ตัวเลือกเดียวกับ
+.BR use )
+.TP
+.B help
+แสดงการใช้งาน
+.TP
+.B version
+แสดงเวอร์ชัน
+.SH การแปลภาษา
+ข้อความที่ผู้ใช้เห็นใช้ gettext (โดเมนข้อความ
+.BR lrm )
+ค้นหาแคตตาล็อกข้อความจาก
+.I po/
+ในซอร์ส ไดเรกทอรี build แล้วจึง locale ที่ติดตั้ง
+ตั้ง
+.BR LANGUAGE ", " LC_ALL " หรือ " LANG
+เพื่อเลือกภาษา (เช่น
+.BR th )
+.SH ไฟล์
+.TP
+.I ~/.config/repoman/lrm/mirrors
+ฐานข้อมูลมิเรอร์คั่นด้วยแท็บ:
+.IR ชื่อเล่น ", " ลำดับความสำคัญ ", " url
+.TP
+.I ~/.config/repoman/lrm/default
+ชื่อเล่นมิเรอร์ที่เลือกอยู่
+.TP
+.I ~/.config/repoman/lrm/health
+ผล ping/bwtest ล่าสุดต่อมิเรอร์ (
+.BR ok " หรือ " bad )
+.TP
+.I /etc/apt/sources.list.d/lrm.sources
+มิเรอร์ Debian/Ubuntu ที่นำไปใช้ (รูปแบบ deb822)
+.TP
+.I /etc/yum.repos.d/lrm.repo
+มิเรอร์ตระกูล RPM ที่นำไปใช้
+.TP
+.I /etc/pacman.d/mirrorlist
+รายการมิเรอร์ Arch ที่นำไปใช้
+.SH ตัวอย่าง
+.TP
+เพิ่มมิเรอร์และแสดงรายการ:
+.B lrm add -10 tuna https://mirrors.tuna.tsinghua.edu.cn/debian
+.br
+.B lrm add ustc https://mirrors.ustc.edu.cn/debian
+.br
+.B lrm list
+.TP
+ทดสอบและเลือกที่เร็วที่สุด:
+.B lrm bwsel
+.SH ผู้เขียน
+@PROJECT_AUTHOR@ <@PROJECT_EMAIL@>
+.SH ลิขสิทธิ์
+Copyright \(co @PROJECT_YEAR@.
+สัญญาอนุญาต AGPL-3.0-or-later

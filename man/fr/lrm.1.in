@@ -1,0 +1,182 @@
+.TH lrm 1 "@PROJECT_YEAR@" "@PROJECT_VERSION@" "Commandes utilisateur"
+.SH NOM
+lrm \- gérer et évaluer les miroirs de paquets des distributions Linux
+.SH SYNOPSIS
+.B lrm
+.RI [ OPTION ]...
+.IR COMMANDE
+.RI [ ARGUMENTS ]...
+.SH DESCRIPTION
+Enregistre les alias et URL de miroirs, les évalue par ping ou téléchargement HTTP,
+puis applique le miroir choisi à la configuration du gestionnaire de paquets local.
+Les familles de distributions prises en charge sont détectées via
+.BR /etc/os-release :
+Debian/Ubuntu (apt), famille RHEL (dnf/yum) et Arch (pacman).
+.PP
+Les définitions de miroirs sont stockées sous
+.RI $XDG_CONFIG_HOME /repoman/lrm/ .
+Lors du premier lancement, si ce répertoire n'existe pas encore,
+.B lrm
+le crée avec des miroirs par défaut intégrés pour la famille détectée
+(Debian, RPM ou Arch), y compris des miroirs publics tels que 163 et Aliyun
+lorsqu'ils sont disponibles.
+.SH OPTIONS
+.TP
+.BR \-v ", " \-\-verbose
+Augmente la verbosité des journaux. Peut être répété
+.RB ( \-vv ", " \-vvv ", " \-vvvv ) :
+niveau 1 pour les tests par miroir, 2 pour les chemins et l'élévation de privilèges,
+3 pour les mesures et commandes, 4 pour la sortie des outils externes.
+Lorsque stderr est un terminal et que terminfo est disponible, les lignes sont colorées
+(vert progression, cyan/bleu/magenta/gris détails, jaune avertissements, rouge erreurs).
+.TP
+.BR \-q ", " \-\-quiet
+Réduit la verbosité.
+.TP
+.BR \-h ", " \-\-help
+Affiche un résumé d'utilisation et quitte avec succès.
+.TP
+.B \-\-version
+Affiche les informations de version et quitte avec succès.
+.SH COMMANDES
+.TP
+.B list
+Liste les miroirs configurés sous la forme
+.IR MARQUE " [" N "] " ALIAS .
+La marque est
+.BR * "(sélectionné), " \- "(dernier test échoué), " ? "(non testé) ou deux espaces.
+.RB N
+est un raccourci à base 1 accepté par
+.BR use " et " remove .
+Avec
+.BR \-p " ou " \-\-priority
+affiche aussi la priorité et l'URL.
+.TP
+.BR add " [[" \- PRIORITY "] | " \-p ", " \-\-priority " " N "] " ALIAS URL
+Ajoute ou met à jour un miroir. La priorité peut être
+.BR \- N
+avant l'alias ou via
+.BR \-p
+(par défaut 100 ; plus petit est préféré dans la liste).
+.TP
+.BR remove " " ALIAS\|NUM
+Supprime un miroir par alias ou numéro de liste.
+.TP
+.BR use " [" \-c ", " \-\-config\-only "] [" apply opts "] " ALIAS\|NUM
+Définit le miroir par défaut et l'applique au gestionnaire de paquets système.
+.PP
+Options d'application Debian (par défaut
+.BR \-\-all ) :
+composants
+.BR main ", " contrib ", " non-free ", " non-free-firmware ,
+.BR deb\-src ,
+suite-updates, backports et entrée security.
+Drapeaux :
+.BR \-a ", " \-\-all ", " \-s ", " \-\-src ", " \-u ", " \-\-updates ", " \-b ", " \-\-backports ", " \-\-security ", " \-\-suite .
+.PP
+Options d'application RPM (BaseOS seul par défaut) :
+.BR \-e ", " \-\-everything
+active BaseOS, AppStream et CRB/PowerTools ;
+.BR \-E ", " \-\-epel
+ajoute EPEL ;
+.BR \-a ", " \-\-all
+active tout plus EPEL.
+Également
+.BR \-\-releasever ", " \-\-arch ", " \-\-appstream ", " \-\-crb ", " \-\-powertools ", " \-\-minimal .
+Les mêmes options s'appliquent à
+.BR pingsel " et " bwsel .
+.PP
+Utilisez
+.B \-\-config\-only
+pour écrire
+.I /etc/apt/sources.list.d/lrm.sources
+sans exécuter
+.BR apt\-get " update".
+Utilisez un numéro de liste (p. ex.
+.B 3
+) ou un alias (p. ex.
+.BR tuna ).
+.TP
+.BR pingtest " [" \-n ", " \-\-count " " N "] [" \-W ", " \-\-timeout " " SEC "]"
+Ping chaque hôte miroir en parallèle et trie par latence et perte de paquets
+(par défaut 3 essais, délai 2 secondes).
+.TP
+.BR bwtest " [" \-\-ref " " BYTES "]"
+Télécharge un fichier de métadonnées depuis chaque miroir en parallèle avec
+.BR getbar (1)
+et affiche les miroirs triés par score. Chaque test exécute
+.RB getbar " -c -d2 -p1 -w3 -s30m -i.1 -q"
+sur l'URL de sonde.
+Le score est le débit effectif en octets/s pour un fichier de référence de 3 Mio :
+.RI ref / ( offset + ref/bps ) ;
+la latence de connexion compte davantage pour les miroirs rapides.
+Une pente négative réduit le score si le débit baisse avant la taille de référence.
+Remplacez la taille de référence avec
+.BR \-\-ref
+ou
+.IR LRM_BWTEST_REF_BYTES .
+.TP
+.BR pingsel " [" apply opts "] [" \-n ", " \-\-count " " N "] [" \-W ", " \-\-timeout " " SEC "]"
+Exécute
+.B pingtest
+et applique le meilleur miroir (mêmes options que
+.BR use ).
+.TP
+.BR bwsel " [" apply opts "] [" \-\-ref " " BYTES "]"
+Exécute
+.B bwtest
+et applique le meilleur miroir (mêmes options que
+.BR use ).
+.TP
+.B help
+Affiche l'utilisation.
+.TP
+.B version
+Affiche la version.
+.SH INTERNATIONALISATION
+Les messages utilisateur utilisent gettext (domaine de texte
+.BR lrm ).
+Les catalogues sont recherchés dans l'arborescence source
+.I po/,
+l'arborescence de compilation, puis le répertoire locale installé.
+Définissez
+.BR LANGUAGE ", " LC_ALL " ou " LANG
+pour choisir une langue (p. ex.
+.BR fr ).
+.SH FICHIERS
+.TP
+.I ~/.config/repoman/lrm/mirrors
+Base de miroirs séparée par tabulations :
+.IR alias ", " priorité ", " url .
+.TP
+.I ~/.config/repoman/lrm/default
+Alias du miroir actuellement sélectionné.
+.TP
+.I ~/.config/repoman/lrm/health
+Dernier résultat ping/bwtest par miroir (
+.BR ok " ou " bad ).
+.TP
+.I /etc/apt/sources.list.d/lrm.sources
+Miroir Debian/Ubuntu appliqué (format deb822).
+.TP
+.I /etc/yum.repos.d/lrm.repo
+Miroir famille RPM appliqué.
+.TP
+.I /etc/pacman.d/mirrorlist
+Liste de miroirs Arch appliquée.
+.SH EXEMPLES
+.TP
+Ajouter des miroirs et les lister :
+.B lrm add -10 tuna https://mirrors.tuna.tsinghua.edu.cn/debian
+.br
+.B lrm add ustc https://mirrors.ustc.edu.cn/debian
+.br
+.B lrm list
+.TP
+Évaluer et sélectionner le plus rapide :
+.B lrm bwsel
+.SH AUTEUR
+@PROJECT_AUTHOR@ <@PROJECT_EMAIL@>
+.SH COPYRIGHT
+Copyright \(co @PROJECT_YEAR@.
+Licence AGPL-3.0-or-later.

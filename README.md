@@ -23,8 +23,9 @@ reference and scoring details.
 
 - `lrm.in` — main driver script (configured by Meson into `build/lrm`)
 - `lib/` — backend modules (`common.sh`, `debian.sh`, `rpm.sh`, `arch.sh`, …)
-- `po/` — gettext catalogs (`*.po` → `*.mo`); hand-translated man pages (`lrm.1-<lang>.in`)
-- `doc/` — hand-translated README files (`README-<lang>.md`, see `po/LINGUAS`)
+- `po/` — gettext catalogs (`*.po` → `*.mo`)
+- `man/<lang>/lrm.1.in` — hand-translated manual pages
+- `README-<lang>.md` — hand-translated readmes (see `po/LINGUAS`)
 - `lrm.1.in` — English manual page source
 - `debian/` — Debian packaging metadata
 - `meson.build` — top-level build definition
@@ -61,13 +62,9 @@ Set `LANGUAGE`, `LC_ALL`, or `LANG` to select a translation, for example:
 LANGUAGE=zh_CN ./build/lrm -h
 ```
 
-### Sync translation templates
-
-```bash
-ninja -C /build posync
-```
-
-`posync` runs `xgettext` on `po/POTFILES` and merges into `po/LINGUAS` catalogs.
+CLI catalogs live in `po/*.po` (see `po/LINGUAS`). Meson compiles them to
+`*.mo` at build time via `i18n.gettext()` — same as getbar, no separate sync
+target.
 
 ### Manual pages and README translations
 
@@ -75,13 +72,12 @@ English sources: `README.md`, `lrm.1.in`.
 
 Other languages are **hand-maintained** — edit these files directly:
 
-- `doc/README-<lang>.md`
-- `po/lrm.1-<lang>.in` (installed as `man/<lang>/man1/lrm.1`)
+- `README-<lang>.md`
+- `man/<lang>/lrm.1.in` (installed as `man/<lang>/man1/lrm.1`)
 
-See `po/TRANSLATORS.md`. There is no documentation generator; `posync` updates
-CLI `.po` files only.
+See `po/TRANSLATORS.md`. There is no documentation generator.
 
-Legacy alias: `README-zh.md` installs from `doc/README-zh_CN.md`.
+Legacy alias: `README-zh.md` installs from `README-zh_CN.md`.
 
 ## Build and install
 
