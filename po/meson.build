@@ -17,11 +17,6 @@ i18n.gettext(
 )
 
 run_target(
-    'gendocs',
-    command: ['python3', meson.project_source_root() / 'po' / 'gendocs.py'],
-)
-
-run_target(
     'posync',
     command: [
         'bash',

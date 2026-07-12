@@ -29,9 +29,3 @@ while IFS= read -r lang || [[ -n "$lang" ]]; do
     fi
     msgmerge --update --no-fuzzy-matching --previous "$po/$lang.po" "$po/lrm.pot"
 done <"$po/LINGUAS"
-
-python3 "$po/gendocs.py"
-
-if command -v po4a >/dev/null 2>&1 && [[ -f "$po/po4a.cfg" ]]; then
-    po4a "$po/po4a.cfg" || true
-fi

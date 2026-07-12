@@ -2,7 +2,7 @@ Source: repoman
 Section: utils
 Priority: optional
 Maintainer: Lenik <repoman@bodz.net>
-Build-Depends: debhelper-compat (= 13), meson, ninja-build, gettext, po4a
+Build-Depends: debhelper-compat (= 13), meson, ninja-build, gettext
 Standards-Version: 4.6.0
 Homepage: https://github.com/lenik/repoman
 Rules-Requires-Root: no
