@@ -4,7 +4,7 @@ repoman (1.1.0) testing; urgency=medium
   * Refactor user-visible strings to gettext; configure LOCALEDIR via Meson
     with lookup order: source po/, build po/, installed localedir.
   * Translate CLI help and messages (zh_CN, zh_TW, and other LINGUAS).
-  * Add po4a translated man pages where PO files exist.
+  * Hand-translated man pages and READMEs (zh_CN); CLI catalogs via gettext.
   * Rewrite README.md and README-zh.md for the bash-only lrm tool.
 
  -- Lenik (谢继雷) <lenik@bodz.net>  Sun, 12 Jul 2026 21:30:00 +0800
