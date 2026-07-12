@@ -1,0 +1,189 @@
+.TH lrm 1 "@PROJECT_YEAR@" "@PROJECT_VERSION@" "User Commands"
+.SH NAME
+lrm \- manage and benchmark Linux distribution package mirrors
+.SH SYNOPSIS
+.B lrm
+.RI [ OPTION ]...
+.IR COMMAND
+.RI [ ARGS ]...
+.SH DESCRIPTION
+.B lrm
+stores mirror aliases and URLs, benchmarks them with ping or HTTP download
+tests, and applies the selected mirror to the local package manager
+configuration. Supported distribution families are detected from
+.BR /etc/os-release :
+Debian/Ubuntu (apt), RHEL-family (dnf/yum), and Arch (pacman).
+.PP
+Mirror definitions are stored under
+.RI $XDG_CONFIG_HOME /repoman/lrm/ .
+On the first run, when that file does not exist yet,
+.B lrm
+creates it with built-in default mirrors for the detected distribution family
+(Debian, RPM, or Arch), including public mirrors such as 163 and Aliyun where
+available.
+.SH OPTIONS
+.TP
+.BR \-v ", " \-\-verbose
+Increase logging verbosity. May be repeated
+.RB ( \-vv ", " \-vvv ", " \-vvvv ) :
+level 1 logs per-mirror tests,
+level 2 logs paths and privilege elevation,
+level 3 logs measurements and commands,
+level 4 logs external tool output.
+When standard error is a terminal and terminfo is available, log lines are
+colored by level (green progress, cyan/blue/magenta/dim verbosity, yellow
+warnings, red errors).
+.TP
+.BR \-q ", " \-\-quiet
+Reduce logging verbosity.
+.TP
+.BR \-h ", " \-\-help
+Print a usage summary and exit successfully.
+.TP
+.B \-\-version
+Print version information and exit successfully.
+.SH COMMANDS
+.TP
+.B list
+List configured mirrors as
+.IR MARK " [" N "] " ALIAS .
+.RB MARK
+is
+.BR * " (selected), " \- " (failed last test), " ? " (untested), or two spaces.
+.RB N
+is a one-based shortcut accepted by
+.BR use " and " remove .
+With
+.BR \-p " or " \-\-priority ,
+also print priority and URL.
+.TP
+.BR add " [[" \- PRIORITY "] | " \-p ", " \-\-priority " " N "] " ALIAS URL
+Add or update a mirror. Optional priority is written as
+.BR \- N
+before the alias or with
+.BR \-p
+(default 100; lower is preferred in listings).
+.TP
+.BR remove " " ALIAS\|NUM
+Remove a mirror by alias or list number.
+.TP
+.BR use " [" \-c ", " \-\-config\-only "] [" apply opts "] " ALIAS\|NUM
+Set the default mirror and apply it to the system package manager.
+.PP
+Debian apply options (default
+.BR \-\-all ):
+.BR main ", " contrib ", " non-free ", " non-free-firmware
+components,
+.BR deb\-src ,
+suite-updates, backports, and a security stanza.
+Flags include
+.BR \-a ", " \-\-all ", " \-s ", " \-\-src ", " \-u ", " \-\-updates ", " \-b ", " \-\-backports ", " \-\-security ", " \-\-suite .
+.PP
+RPM apply options (default BaseOS only):
+.BR \-e ", " \-\-everything
+enables BaseOS, AppStream, and CRB/PowerTools;
+.BR \-E ", " \-\-epel
+adds EPEL;
+.BR \-a ", " \-\-all
+enables everything plus EPEL.
+Also
+.BR \-\-releasever ", " \-\-arch ", " \-\-appstream ", " \-\-crb ", " \-\-powertools ", " \-\-minimal .
+The same apply options are accepted by
+.BR pingsel " and " bwsel .
+.PP
+Use
+.B \-\-config\-only
+to write
+.I /etc/apt/sources.list.d/lrm.sources
+without running
+.BR apt\-get " update".
+Use a list number (e.g.
+.B 3
+) or alias (e.g.
+.BR tuna ).
+.TP
+.BR pingtest " [" \-n ", " \-\-count " " N "] [" \-W ", " \-\-timeout " " SEC "]"
+Ping each mirror host in parallel and print mirrors sorted by latency and
+packet loss (default count 3, timeout 2 seconds).
+.TP
+.BR bwtest " [" \-\-ref " " BYTES "]"
+Download a repository metadata file from each mirror in parallel using
+.BR getbar (1)
+and print mirrors sorted by score. Each test runs
+.RB getbar " -c -d2 -p1 -w3 -s30m -i.1 -q"
+on the mirror probe URL. Score is the effective bytes per second to download a
+3 MiB reference file:
+.RI ref / ( offset + ref/bps ) ,
+so connection delay matters more for fast mirrors and less when the transfer
+itself is slow. A declining linear fit
+.RI ( \-p
+slope) reduces the score if throughput drops before the reference size is
+reached. Override the reference size with
+.BR \-\-ref
+or
+.IR LRM_BWTEST_REF_BYTES .
+.TP
+.BR pingsel " [" apply opts "] [" \-n ", " \-\-count " " N "] [" \-W ", " \-\-timeout " " SEC "]"
+Run
+.B pingtest
+and apply the best mirror (same apply options as
+.BR use ).
+.TP
+.BR bwsel " [" apply opts "] [" \-\-ref " " BYTES "]"
+Run
+.B bwtest
+and apply the best mirror (same apply options as
+.BR use ).
+.TP
+.B help
+Show usage.
+.TP
+.B version
+Show version.
+.SH INTERNATIONALIZATION
+User-visible messages use gettext (text domain
+.BR lrm ).
+Message catalogs are searched under the source
+.I po/
+tree, the build tree, then the installed locale directory.
+Set
+.BR LANGUAGE ", " LC_ALL ", or " LANG
+to select a translation (e.g.
+.BR zh_CN ).
+.SH FILES
+.TP
+.I ~/.config/repoman/lrm/mirrors
+Tab-separated mirror database:
+.IR alias ", " priority ", " url .
+.TP
+.I ~/.config/repoman/lrm/default
+Currently selected mirror alias.
+.TP
+.I ~/.config/repoman/lrm/health
+Last ping/bwtest result per mirror (
+.BR ok " or " bad ).
+.TP
+.I /etc/apt/sources.list.d/lrm.sources
+Applied Debian/Ubuntu mirror (deb822 format).
+.TP
+.I /etc/yum.repos.d/lrm.repo
+Applied RPM-family mirror.
+.TP
+.I /etc/pacman.d/mirrorlist
+Applied Arch mirror list.
+.SH EXAMPLES
+.TP
+Add mirrors and list them:
+.B lrm add -10 tuna https://mirrors.tuna.tsinghua.edu.cn/debian
+.br
+.B lrm add ustc https://mirrors.ustc.edu.cn/debian
+.br
+.B lrm list
+.TP
+Benchmark and select the fastest:
+.B lrm bwsel
+.SH AUTHOR
+Written by @PROJECT_AUTHOR@ <@PROJECT_EMAIL@>.
+.SH COPYRIGHT
+Copyright \(co @PROJECT_YEAR@.
+License AGPL-3.0-or-later.
