@@ -38,8 +38,9 @@ See `drm(1)` for full command reference.
 ## Repository layout
 
 - `lrm.in` / `drm.in` — main driver scripts (configured by Meson into `build/`)
-- `lib/` — lrm backend modules (`debian.sh`, `rpm.sh`, `arch.sh`, …)
-- `lib-drm/` — drm backend modules (`docker.sh`, …)
+- `share/` — shared modules (`common.sh`, `i18n.sh`, `logstyle.sh`, `detect.sh`, `arch.sh`)
+- `share/var/` — package backends (`debian.sh`, `rpm.sh`, `docker.sh`)
+- `share/seed/` — built-in mirror seeds (`lrm.sh`, `drm.sh`)
 - `po/` — gettext catalogs (`*.po` → `*.mo`)
 - `man/<lang>/lrm.1.in` — hand-translated manual pages
 - `README-<lang>.md` — hand-translated readmes (see `po/LINGUAS`)
