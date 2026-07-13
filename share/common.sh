@@ -5,16 +5,19 @@
 MIRROR_ALIASES=()
 MIRROR_PRIORITIES=()
 MIRROR_URLS=()
+declare -gA HEALTH=()
+HEALTH_LOADED=""
+MIRRORS_LOADED=0
 
-LRM_MIRROR_FILE=""
-LRM_DEFAULT_FILE=""
-LRM_HEALTH_FILE=""
-LRM_PREFERRED_FILE=""
+MIRROR_FILE=""
+DEFAULT_FILE=""
+HEALTH_FILE=""
+PREFERRED_FILE=""
 DISTRO_FAMILY=""
-LRM_GETBAR="${LRM_GETBAR:-getbar}"
-LRM_GETBAR_OPTS="${LRM_GETBAR_OPTS:--c -d2 -p1 -w3 -s30m -i.1 -q}"
+GETBAR="${GETBAR:-getbar}"
+GETBAR_OPTS="${GETBAR_OPTS:--c -d2 -p1 -w3 -s30m -i.1 -q}"
 # Reference download size for scoring: effective B/s = ref / (offset + ref/bps).
-LRM_BWTEST_REF_BYTES="${LRM_BWTEST_REF_BYTES:-3000000}"
+BWTEST_REF_BYTES="${BWTEST_REF_BYTES:-3000000}"
 
 # Logging levels (set VERBOSE via -v / -vv / ...):
 #   0  normal progress and warnings
@@ -133,125 +136,33 @@ remove_privileged() {
     elevated "$path" rm -f "$path"
 }
 
-init_lrm() {
-    if [[ -n "${LRM_STATE_DIR:-}" ]]; then
-        :
-    elif [[ -n "${XDG_CONFIG_HOME:-}" ]]; then
-        LRM_STATE_DIR="$XDG_CONFIG_HOME/repoman/lrm"
-    else
-        LRM_STATE_DIR="$HOME/.config/repoman/lrm"
-    fi
-    mkdir -p "$LRM_STATE_DIR"
-    vlog2 "state directory: $LRM_STATE_DIR"
-}
-
-_lrm_migrate_legacy_state() {
-    local key="$1"
-    local host_spec host_key legacy_mirror legacy_default legacy_health
-    local legacy_dir migrated=0
-    local saved_id="${LRM_DISTRO_ID:-}"
-    local saved_release="${LRM_RELEASE:-}"
-    local saved_distro="${LRM_DISTRO:-}"
-    local saved_key="${LRM_DISTRO_KEY:-}"
-
-    legacy_mirror="$LRM_STATE_DIR/mirrors"
-    legacy_default="$LRM_STATE_DIR/default"
-    legacy_health="$LRM_STATE_DIR/health"
-
-    host_spec="$(detect_host_distro_spec)"
-    [[ "$host_spec" != unknown ]] || return 0
-    parse_distro_spec "$host_spec"
-    host_key="$(distro_spec_to_state_key "$LRM_DISTRO_ID" "$LRM_RELEASE")"
-    LRM_DISTRO_ID="$saved_id"
-    LRM_RELEASE="$saved_release"
-    LRM_DISTRO="$saved_distro"
-    LRM_DISTRO_KEY="$saved_key"
-    [[ "$key" == "$host_key" ]] || return 0
-
-    if [[ -f "$legacy_mirror" && ! -f "$LRM_MIRROR_FILE" ]]; then
-        cp -a "$legacy_mirror" "$LRM_MIRROR_FILE"
-        migrated=1
-    fi
-    if [[ -f "$legacy_default" && ! -f "$LRM_DEFAULT_FILE" ]]; then
-        cp -a "$legacy_default" "$LRM_DEFAULT_FILE"
-        migrated=1
-    fi
-    if [[ -f "$legacy_health" && ! -f "$LRM_HEALTH_FILE" ]]; then
-        cp -a "$legacy_health" "$LRM_HEALTH_FILE"
-        migrated=1
-    fi
-
-    if [[ "$key" == */* ]]; then
-        legacy_dir="${key%%/*}"
-        if [[ -f "$LRM_STATE_DIR/$legacy_dir/mirrors" && ! -f "$LRM_MIRROR_FILE" ]]; then
-            cp -a "$LRM_STATE_DIR/$legacy_dir/mirrors" "$LRM_MIRROR_FILE"
-            migrated=1
-        fi
-        if [[ -f "$LRM_STATE_DIR/$legacy_dir/default" && ! -f "$LRM_DEFAULT_FILE" ]]; then
-            cp -a "$LRM_STATE_DIR/$legacy_dir/default" "$LRM_DEFAULT_FILE"
-            migrated=1
-        fi
-        if [[ -f "$LRM_STATE_DIR/$legacy_dir/health" && ! -f "$LRM_HEALTH_FILE" ]]; then
-            cp -a "$LRM_STATE_DIR/$legacy_dir/health" "$LRM_HEALTH_FILE"
-            migrated=1
-        fi
-    fi
-
-    if ((migrated)); then
-        rm -f "$legacy_mirror" "$legacy_default" "$legacy_health"
-        if [[ "$key" == */* ]]; then
-            legacy_dir="${key%%/*}"
-            rmdir "$LRM_STATE_DIR/$legacy_dir" 2>/dev/null || true
-        fi
-        vlog2 "migrated legacy state into $LRM_STATE_DIR/$key/"
-    fi
-}
-
-lrm_set_distro_state() {
-    local key="${LRM_DISTRO_KEY:-${LRM_DISTRO:?}}"
-
-    [[ -n "${LRM_STATE_DIR:-}" ]] || die "$(_ 'internal error: call init_lrm before load_distro_backend')"
-
-    LRM_MIRROR_FILE="$LRM_STATE_DIR/$key/mirrors"
-    LRM_DEFAULT_FILE="$LRM_STATE_DIR/$key/default"
-    LRM_HEALTH_FILE="$LRM_STATE_DIR/$key/health"
-    LRM_PREFERRED_FILE="$LRM_STATE_DIR/$key/preferred"
-    mkdir -p "$LRM_STATE_DIR/$key"
-    _lrm_migrate_legacy_state "$key"
-    invalidate_mirrors_cache
-    unset LRM_HEALTH_LOADED
-    vlog2 "distro state: $LRM_STATE_DIR/$key/"
-}
-
-_lrm_ensure_distro_paths() {
-    if [[ -n "${LRM_MIRROR_FILE:-}" ]]; then
+ensure_state_paths() {
+    if [[ -n "${MIRROR_FILE:-}" ]]; then
         return 0
     fi
-    [[ -n "${LRM_DISTRO_ID:-}${LRM_DISTRO:-}" && -n "${LRM_STATE_DIR:-}" ]] || \
-        die "$(_ 'internal error: call init_lrm and load_distro_backend before mirror commands')"
-    lrm_set_distro_state
+    die "$(_ 'internal error: call init before mirror commands')"
 }
 
 health_load() {
-    if [[ -z "${LRM_HEALTH_LOADED:-}" ]]; then
-        declare -gA LRM_HEALTH=()
-        LRM_HEALTH_LOADED=1
+    if [[ -z "${HEALTH_LOADED:-}" ]]; then
+        declare -gA HEALTH=()
+        HEALTH_LOADED=1
     fi
-    if [[ -f "$LRM_HEALTH_FILE" ]]; then
+    if [[ -f "$HEALTH_FILE" ]]; then
         local alias status
         while IFS=$'\t' read -r alias status || [[ -n "$alias" ]]; do
             [[ -n "$alias" && -n "$status" ]] || continue
-            LRM_HEALTH[$alias]="$status"
-        done <"$LRM_HEALTH_FILE"
+            HEALTH[$alias]="$status"
+        done <"$HEALTH_FILE"
     fi
 }
 
 health_save() {
     local alias
-    _lrm_ensure_distro_paths
-    : >"$LRM_HEALTH_FILE"
-    for alias in "${!LRM_HEALTH[@]}"; do
-        printf '%s\t%s\n' "$alias" "${LRM_HEALTH[$alias]}" >>"$LRM_HEALTH_FILE"
+    ensure_state_paths
+    : >"$HEALTH_FILE"
+    for alias in "${!HEALTH[@]}"; do
+        printf '%s\t%s\n' "$alias" "${HEALTH[$alias]}" >>"$HEALTH_FILE"
     done
 }
 
@@ -259,30 +170,30 @@ health_set() {
     local alias="$1"
     local status="$2"
     health_load
-    LRM_HEALTH[$alias]="$status"
+    HEALTH[$alias]="$status"
     health_save
 }
 
 health_get() {
     local alias="$1"
     health_load
-    printf '%s\n' "${LRM_HEALTH[$alias]:-}"
+    printf '%s\n' "${HEALTH[$alias]:-}"
 }
 
 preferred_get() {
-    if [[ -f "$LRM_PREFERRED_FILE" ]]; then
-        tr -d '[:space:]' <"$LRM_PREFERRED_FILE"
+    if [[ -f "$PREFERRED_FILE" ]]; then
+        tr -d '[:space:]' <"$PREFERRED_FILE"
     fi
 }
 
 preferred_set() {
-    _lrm_ensure_distro_paths
-    printf '%s\n' "$1" >"$LRM_PREFERRED_FILE"
+    ensure_state_paths
+    printf '%s\n' "$1" >"$PREFERRED_FILE"
 }
 
 preferred_clear() {
-    _lrm_ensure_distro_paths
-    rm -f "$LRM_PREFERRED_FILE"
+    ensure_state_paths
+    rm -f "$PREFERRED_FILE"
 }
 
 preferred_apply_ping_results() {
@@ -322,9 +233,9 @@ health_apply_ping_results() {
         [[ -n "$line" ]] || continue
         read -r latency loss alias url <<<"$line"
         if [[ "$latency" == "9999" || "$loss" -ge 100 ]]; then
-            LRM_HEALTH[$alias]=bad
+            HEALTH[$alias]=bad
         else
-            LRM_HEALTH[$alias]=ok
+            HEALTH[$alias]=ok
         fi
     done
     health_save
@@ -337,9 +248,9 @@ health_apply_bw_results() {
         [[ -n "$line" ]] || continue
         read -r score bps offset slope alias url <<<"$line"
         if [[ "$score" == "0" ]]; then
-            LRM_HEALTH[$alias]=bad
+            HEALTH[$alias]=bad
         else
-            LRM_HEALTH[$alias]=ok
+            HEALTH[$alias]=ok
         fi
     done
     health_save
@@ -374,7 +285,7 @@ mirror_list_mark() {
     local default="" preferred=""
     local mark_in_use mark_failed mark_fastest mark_ok mark_untested
 
-    if [[ "${LRM_LIST_CHAR:-0}" -eq 1 ]]; then
+    if [[ "${LIST_CHAR:-0}" -eq 1 ]]; then
         mark_in_use='*'
         mark_failed='x'
         mark_fastest='+'
@@ -388,8 +299,8 @@ mirror_list_mark() {
         mark_untested='⚪'
     fi
 
-    if [[ -f "$LRM_DEFAULT_FILE" ]]; then
-        default="$(tr -d '[:space:]' <"$LRM_DEFAULT_FILE")"
+    if [[ -f "$DEFAULT_FILE" ]]; then
+        default="$(tr -d '[:space:]' <"$DEFAULT_FILE")"
     fi
     if [[ "$alias" == "$default" ]]; then
         printf '%s ' "$mark_in_use"
@@ -423,7 +334,7 @@ mirror_resolve_alias() {
         max="${#MIRROR_LIST_ORDER[@]}"
         n="$target"
         if ((max == 0 || n < 1 || n > max)); then
-        die "$(printf "$(_ 'mirror number out of range: %s (1-%s)')" "$target" "${max:-0}")"
+            die "$(printf "$(_ 'mirror number out of range: %s (1-%s)')" "$target" "${max:-0}")"
         fi
         printf '%s\n' "${MIRROR_ALIASES[${MIRROR_LIST_ORDER[$((n - 1))]}]}"
         return 0
@@ -498,29 +409,29 @@ mirror_remove() {
     MIRROR_PRIORITIES=("${new_priorities[@]}")
     MIRROR_URLS=("${new_urls[@]}")
 
-    if [[ -f "$LRM_DEFAULT_FILE" ]] && [[ "$(cat "$LRM_DEFAULT_FILE")" == "$alias" ]]; then
-        rm -f "$LRM_DEFAULT_FILE"
+    if [[ -f "$DEFAULT_FILE" ]] && [[ "$(<"$DEFAULT_FILE")" == "$alias" ]]; then
+        rm -f "$DEFAULT_FILE"
     fi
 
     health_load
-    unset 'LRM_HEALTH[$alias]'
+    unset 'HEALTH[$alias]'
     health_save
-    if [[ -f "$LRM_PREFERRED_FILE" ]] && [[ "$(preferred_get)" == "$alias" ]]; then
+    if [[ -f "$PREFERRED_FILE" ]] && [[ "$(preferred_get)" == "$alias" ]]; then
         preferred_clear
     fi
 }
 
 load_mirrors() {
-    if [[ "${LRM_MIRRORS_LOADED:-0}" -eq 1 ]]; then
+    if [[ "${MIRRORS_LOADED:-0}" -eq 1 ]]; then
         return 0
     fi
 
-    _lrm_ensure_distro_paths
+    ensure_state_paths
 
     MIRROR_ALIASES=()
     MIRROR_PRIORITIES=()
     MIRROR_URLS=()
-    [[ -f "$LRM_MIRROR_FILE" ]] || return 0
+    [[ -f "$MIRROR_FILE" ]] || return 0
 
     local line alias priority url
     while IFS= read -r line || [[ -n "$line" ]]; do
@@ -528,26 +439,26 @@ load_mirrors() {
         read -r alias priority url <<<"$line"
         [[ -n "$alias" && -n "$priority" && -n "$url" ]] || continue
         mirror_add "$alias" "$priority" "$url"
-    done <"$LRM_MIRROR_FILE"
-    LRM_MIRRORS_LOADED=1
-    vlog2 "loaded ${#MIRROR_ALIASES[@]} mirrors from $LRM_MIRROR_FILE"
+    done <"$MIRROR_FILE"
+    MIRRORS_LOADED=1
+    vlog2 "loaded ${#MIRROR_ALIASES[@]} mirrors from $MIRROR_FILE"
 }
 
 invalidate_mirrors_cache() {
-    LRM_MIRRORS_LOADED=0
+    MIRRORS_LOADED=0
 }
 
 save_mirrors() {
     local i
-    _lrm_ensure_distro_paths
-    mkdir -p "$(dirname "$LRM_MIRROR_FILE")"
-    : >"$LRM_MIRROR_FILE"
+    ensure_state_paths
+    mkdir -p "$(dirname "$MIRROR_FILE")"
+    : >"$MIRROR_FILE"
     for i in "${!MIRROR_ALIASES[@]}"; do
         printf '%s\t%s\t%s\n' \
             "${MIRROR_ALIASES[$i]}" "${MIRROR_PRIORITIES[$i]}" "${MIRROR_URLS[$i]}" \
-            >>"$LRM_MIRROR_FILE"
+            >>"$MIRROR_FILE"
     done
-    LRM_MIRRORS_LOADED=1
+    MIRRORS_LOADED=1
 }
 
 list_mirrors_sorted() {
@@ -560,7 +471,7 @@ list_mirrors_sorted() {
         num=$((num + 1))
         alias="${MIRROR_ALIASES[$idx]}"
         mark="$(mirror_list_mark "$alias")"
-        if [[ "${LRM_LIST_PRIORITY:-0}" -eq 1 ]]; then
+        if [[ "${LIST_PRIORITY:-0}" -eq 1 ]]; then
             printf '%s[%d] %s %s %s\n' \
                 "$mark" "$num" "$alias" "${MIRROR_PRIORITIES[$idx]}" "${MIRROR_URLS[$idx]}"
         else
@@ -581,7 +492,8 @@ mirror_use() {
     local alias url
     alias="$(mirror_resolve_alias "$target")"
     url="$(mirror_get_url "$alias")"
-    printf '%s\n' "$alias" >"$LRM_DEFAULT_FILE"
+    ensure_state_paths
+    printf '%s\n' "$alias" >"$DEFAULT_FILE"
     apply_mirror "$url"
     log "$(printf "$(_ 'using mirror %s (%s)')" "$alias" "$url")"
 }
@@ -595,7 +507,7 @@ _ping_mirror_worker() {
 
     host="$(url_host "$url")"
     vlog "pinging $alias ($host)"
-    if ! mapfile -t ping_lines < <(ping -c "${LRM_PING_COUNT:-3}" -W "${LRM_PING_TIMEOUT:-2}" "$host" 2>/dev/null | tail -2); then
+    if ! mapfile -t ping_lines < <(ping -c "${PING_COUNT:-3}" -W "${PING_TIMEOUT:-2}" "$host" 2>/dev/null | tail -2); then
         vlog3 "ping $alias ($host): unreachable"
         printf '%s\n' "9999 100 $alias $url" >"$outdir/$idx"
         return 0
@@ -668,7 +580,7 @@ format_bps() {
 }
 
 _bw_score_from_output() {
-    awk -v alias="$1" -v url="$2" -v ref="${LRM_BWTEST_REF_BYTES:-3000000}" '
+    awk -v alias="$1" -v url="$2" -v ref="${BWTEST_REF_BYTES:-3000000}" '
     function is_count_line(line,    f) {
         return (split(line, f, " ") == 4 && f[2] + 0 > 0 && f[4] + 0 > 0)
     }
@@ -746,10 +658,10 @@ _bw_mirror_worker() {
 
     test_url="$(mirror_probe_url "$url")"
     vlog "bandwidth test $alias ($test_url)"
-    vlog3 "getbar $LRM_GETBAR $LRM_GETBAR_OPTS $test_url"
+    vlog3 "getbar $GETBAR $GETBAR_OPTS $test_url"
 
-    getbar_out="$(mktemp "${TMPDIR:-/tmp}/lrm-getbar.XXXXXX")"
-    if ! $LRM_GETBAR $LRM_GETBAR_OPTS "$test_url" >"$getbar_out" 2>/dev/null; then
+    getbar_out="$(mktemp "${TMPDIR:-/tmp}/repoman-getbar.XXXXXX")"
+    if ! $GETBAR $GETBAR_OPTS "$test_url" >"$getbar_out" 2>/dev/null; then
         vlog3 "getbar failed for $alias"
     fi
 
@@ -773,7 +685,7 @@ run_pingtest() {
     vlog2 "ping testing ${#MIRROR_ALIASES[@]} mirrors in parallel"
     local tmpdir i
     local -a results=()
-    tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/lrm-ping.XXXXXX")"
+    tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/repoman-ping.XXXXXX")"
 
     for i in "${!MIRROR_ALIASES[@]}"; do
         _ping_mirror_worker "$i" "${MIRROR_ALIASES[$i]}" "${MIRROR_URLS[$i]}" "$tmpdir" &
@@ -798,13 +710,13 @@ run_pingtest() {
 }
 
 run_bwtest() {
-    require_commands "$LRM_GETBAR" awk sort
+    require_commands "$GETBAR" awk sort
     ((${#MIRROR_ALIASES[@]} > 0)) || die "$(_ 'no mirrors configured')"
 
-    vlog2 "bandwidth testing ${#MIRROR_ALIASES[@]} mirrors in parallel (ref=${LRM_BWTEST_REF_BYTES} bytes)"
+    vlog2 "bandwidth testing ${#MIRROR_ALIASES[@]} mirrors in parallel (ref=${BWTEST_REF_BYTES} bytes)"
     local tmpdir i
     local -a results=()
-    tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/lrm-bw.XXXXXX")"
+    tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/repoman-bw.XXXXXX")"
 
     for i in "${!MIRROR_ALIASES[@]}"; do
         _bw_mirror_worker "$i" "${MIRROR_ALIASES[$i]}" "${MIRROR_URLS[$i]}" "$tmpdir" &

@@ -71,8 +71,8 @@ parse_apply_opts() {
 
 parse_sel_opts() {
     LRM_CONFIG_ONLY=0
-    LRM_PING_COUNT=3
-    LRM_PING_TIMEOUT=2
+    PING_COUNT=3
+    PING_TIMEOUT=2
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -85,17 +85,17 @@ parse_sel_opts() {
             ;;
         -n|--count)
             [[ $# -ge 2 ]] || die "$(_ 'usage: -n|--count N')"
-            LRM_PING_COUNT="$2"
+            PING_COUNT="$2"
             shift 2
             ;;
         -W|--timeout)
             [[ $# -ge 2 ]] || die "$(_ 'usage: -W|--timeout SEC')"
-            LRM_PING_TIMEOUT="$2"
+            PING_TIMEOUT="$2"
             shift 2
             ;;
         --ref)
             [[ $# -ge 2 ]] || die "$(_ 'usage: --ref BYTES')"
-            LRM_BWTEST_REF_BYTES="$2"
+            BWTEST_REF_BYTES="$2"
             shift 2
             ;;
         -h|--help) usage; exit 0 ;;
@@ -104,5 +104,5 @@ parse_sel_opts() {
         esac
     done
 
-    export LRM_CONFIG_ONLY LRM_PING_COUNT LRM_PING_TIMEOUT LRM_BWTEST_REF_BYTES
+    export LRM_CONFIG_ONLY PING_COUNT PING_TIMEOUT BWTEST_REF_BYTES
 }

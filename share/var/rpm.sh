@@ -280,8 +280,8 @@ parse_apply_opts() {
 parse_sel_opts() {
     lrm_rpm_apply_minimal
     LRM_CONFIG_ONLY=0
-    LRM_PING_COUNT=3
-    LRM_PING_TIMEOUT=2
+    PING_COUNT=3
+    PING_TIMEOUT=2
     LRM_RELEASEVER="$(detect_rpm_releasever)"
     LRM_ARCH="$(detect_rpm_basearch)"
 
@@ -306,17 +306,17 @@ parse_sel_opts() {
             ;;
         -n|--count)
             [[ $# -ge 2 ]] || die "$(_ 'usage: -n|--count N')"
-            LRM_PING_COUNT="$2"
+            PING_COUNT="$2"
             shift 2
             ;;
         -W|--timeout)
             [[ $# -ge 2 ]] || die "$(_ 'usage: -W|--timeout SEC')"
-            LRM_PING_TIMEOUT="$2"
+            PING_TIMEOUT="$2"
             shift 2
             ;;
         --ref)
             [[ $# -ge 2 ]] || die "$(_ 'usage: --ref BYTES')"
-            LRM_BWTEST_REF_BYTES="$2"
+            BWTEST_REF_BYTES="$2"
             shift 2
             ;;
         -h|--help) usage; exit 0 ;;
@@ -327,5 +327,5 @@ parse_sel_opts() {
 
     export LRM_CONFIG_ONLY LRM_RELEASEVER LRM_ARCH
     export LRM_RPM_BASEOS LRM_RPM_APPSTREAM LRM_RPM_CRB LRM_RPM_EPEL
-    export LRM_PING_COUNT LRM_PING_TIMEOUT LRM_BWTEST_REF_BYTES
+    export PING_COUNT PING_TIMEOUT BWTEST_REF_BYTES
 }

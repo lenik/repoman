@@ -12,13 +12,13 @@ seed_default_mirrors() {
 }
 
 ensure_mirrors() {
-    if [[ -f "$DRM_MIRROR_FILE" ]]; then
+    if [[ -f "$MIRROR_FILE" ]]; then
         load_mirrors
         return 0
     fi
 
     seed_default_mirrors
     save_mirrors
-    DRM_MIRRORS_LOADED=1
+    MIRRORS_LOADED=1
     vlog "$(_ 'installed default Docker registry mirrors')"
 }

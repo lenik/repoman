@@ -303,17 +303,17 @@ load_distro_backend_for() {
     vlog2 "distribution family: $family"
     case "$family" in
         debian)
-            # shellcheck source=debian.sh
-            source "$LIB_DIR/debian.sh"
+            # shellcheck source=share/var/debian.sh
+            source "$SHARE_DIR/var/debian.sh"
             ;;
         rpm|centos)
             DISTRO_FAMILY=rpm
-            # shellcheck source=rpm.sh
-            source "$LIB_DIR/rpm.sh"
+            # shellcheck source=share/var/rpm.sh
+            source "$SHARE_DIR/var/rpm.sh"
             ;;
         arch)
-            # shellcheck source=arch.sh
-            source "$LIB_DIR/arch.sh"
+            # shellcheck source=share/arch.sh
+            source "$SHARE_DIR/arch.sh"
             ;;
         *)
             die "$(printf "$(_ 'unsupported distribution family: %s')" "${family:-unknown}")"

@@ -135,8 +135,8 @@ parse_apply_opts() {
 parse_sel_opts() {
     lrm_debian_apply_defaults
     LRM_CONFIG_ONLY=0
-    LRM_PING_COUNT=3
-    LRM_PING_TIMEOUT=2
+    PING_COUNT=3
+    PING_TIMEOUT=2
     local suite="${LRM_SUITE:-$(detect_debian_suite)}"
     LRM_SUITE="$suite"
 
@@ -173,17 +173,17 @@ parse_sel_opts() {
             ;;
         -n|--count)
             [[ $# -ge 2 ]] || die "$(_ 'usage: -n|--count N')"
-            LRM_PING_COUNT="$2"
+            PING_COUNT="$2"
             shift 2
             ;;
         -W|--timeout)
             [[ $# -ge 2 ]] || die "$(_ 'usage: -W|--timeout SEC')"
-            LRM_PING_TIMEOUT="$2"
+            PING_TIMEOUT="$2"
             shift 2
             ;;
         --ref)
             [[ $# -ge 2 ]] || die "$(_ 'usage: --ref BYTES')"
-            LRM_BWTEST_REF_BYTES="$2"
+            BWTEST_REF_BYTES="$2"
             shift 2
             ;;
         -e|--everything|-E|--epel|-r|--releasever|--arch|--appstream|--crb|--powertools|--no-epel|--no-appstream|--no-crb|--no-baseos)
@@ -196,8 +196,8 @@ parse_sel_opts() {
     done
 
     export LRM_CONFIG_ONLY LRM_SUITE LRM_DEB_SRC LRM_DEB_UPDATES LRM_DEB_BACKPORTS
-    export LRM_DEB_SECURITY LRM_DEB_COMPONENTS LRM_PING_COUNT LRM_PING_TIMEOUT
-    export LRM_BWTEST_REF_BYTES
+    export LRM_DEB_SECURITY LRM_DEB_COMPONENTS PING_COUNT PING_TIMEOUT
+    export BWTEST_REF_BYTES
 }
 
 mirror_probe_url() {

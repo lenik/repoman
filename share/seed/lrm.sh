@@ -261,7 +261,7 @@ seed_default_mirrors_for() {
 }
 
 ensure_mirrors() {
-    if [[ -f "$LRM_MIRROR_FILE" ]]; then
+    if [[ -f "$MIRROR_FILE" ]]; then
         load_mirrors
         return 0
     fi
@@ -273,6 +273,6 @@ ensure_mirrors() {
     fi
     seed_default_mirrors_for "$distro"
     save_mirrors
-    LRM_MIRRORS_LOADED=1
+    MIRRORS_LOADED=1
     vlog "$(printf "$(_ 'installed default mirrors for %s')" "$(distro_spec_display 2>/dev/null || printf '%s' "$distro")")"
 }
