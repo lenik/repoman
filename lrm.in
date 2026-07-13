@@ -4,78 +4,221 @@
 
 set -euo pipefail
 
-LRM_NAME=lrm
+TOOL_NAME=lrm
 LRM_VERSION=@PROJECT_VERSION@
-LRM_TEXTDOMAIN=@LRM_TEXTDOMAIN@
-LRM_INSTALL_LOCALEDIR=@LRM_INSTALL_LOCALEDIR@
-LRM_SOURCE_LOCALEDIR=@LRM_SOURCE_LOCALEDIR@
-LRM_BUILD_LOCALEDIR=@LRM_BUILD_LOCALEDIR@
+TEXTDOMAIN=@LRM_TEXTDOMAIN@
+INSTALL_LOCALEDIR=@LRM_INSTALL_LOCALEDIR@
+SOURCE_LOCALEDIR=@LRM_SOURCE_LOCALEDIR@
+BUILD_LOCALEDIR=@LRM_BUILD_LOCALEDIR@
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [[ -f "$SCRIPT_DIR/lib/common.sh" ]]; then
-    LIB_DIR="$SCRIPT_DIR/lib"
-elif [[ -n "${LRM_LIB_DIR:-}" ]]; then
-    LIB_DIR="$LRM_LIB_DIR"
+SHARE_DIR=""
+if [[ -f "$SCRIPT_DIR/share/common.sh" ]]; then
+    SHARE_DIR="$SCRIPT_DIR/share"
+elif [[ -n "${REPOMAN_SHARE_DIR:-}" ]]; then
+    SHARE_DIR="$REPOMAN_SHARE_DIR"
 else
     for candidate in \
-        "/usr/share/repoman/lrm/lib" \
-        "/usr/local/share/repoman/lrm/lib"; do
+        "/usr/share/repoman" \
+        "/usr/local/share/repoman"; do
         if [[ -f "$candidate/common.sh" ]]; then
-            LIB_DIR="$candidate"
+            SHARE_DIR="$candidate"
             break
         fi
     done
 fi
 
-# Meson out-of-tree build: build/lrm with lib/ at source root.
-if [[ -z "${LIB_DIR:-}" && -f "$SCRIPT_DIR/../lib/common.sh" ]]; then
-    LIB_DIR="$(cd "$SCRIPT_DIR/../lib" && pwd)"
+# Meson out-of-tree build: build/lrm with share/ at source root.
+if [[ -z "$SHARE_DIR" && -f "$SCRIPT_DIR/../share/common.sh" ]]; then
+    SHARE_DIR="$(cd "$SCRIPT_DIR/../share" && pwd)"
 fi
 
-if [[ -z "${LIB_DIR:-}" || ! -f "$LIB_DIR/common.sh" ]]; then
-    printf '%s: %s\n' "$LRM_NAME" "could not find lrm library scripts" >&2
+if [[ -z "${SHARE_DIR:-}" || ! -f "$SHARE_DIR/common.sh" ]]; then
+    printf '%s: %s\n' "$TOOL_NAME" "could not find lrm library scripts" >&2
     exit 1
 fi
 
-# shellcheck source=lib/i18n.sh
-source "$LIB_DIR/i18n.sh"
-# shellcheck source=lib/logstyle.sh
-source "$LIB_DIR/logstyle.sh"
-# shellcheck source=lib/common.sh
-source "$LIB_DIR/common.sh"
-# shellcheck source=lib/detect.sh
-source "$LIB_DIR/detect.sh"
-# shellcheck source=lib/seed.sh
-source "$LIB_DIR/seed.sh"
-# shellcheck source=lib/usage.sh
-source "$LIB_DIR/usage.sh"
+# shellcheck source=share/i18n.sh
+source "$SHARE_DIR/i18n.sh"
+# shellcheck source=share/logstyle.sh
+source "$SHARE_DIR/logstyle.sh"
+# shellcheck source=share/common.sh
+source "$SHARE_DIR/common.sh"
+# shellcheck source=share/detect.sh
+source "$SHARE_DIR/detect.sh"
+# shellcheck source=share/seed/lrm.sh
+source "$SHARE_DIR/seed/lrm.sh"
+
+init_lrm() {
+    if [[ -n "${LRM_STATE_DIR:-}" ]]; then
+        :
+    elif [[ -n "${XDG_CONFIG_HOME:-}" ]]; then
+        LRM_STATE_DIR="$XDG_CONFIG_HOME/repoman/lrm"
+    else
+        LRM_STATE_DIR="$HOME/.config/repoman/lrm"
+    fi
+    mkdir -p "$LRM_STATE_DIR"
+    vlog2 "state directory: $LRM_STATE_DIR"
+}
+
+_lrm_migrate_legacy_state() {
+    local key="$1"
+    local host_spec host_key legacy_mirror legacy_default legacy_health
+    local legacy_dir migrated=0
+    local saved_id="${LRM_DISTRO_ID:-}"
+    local saved_release="${LRM_RELEASE:-}"
+    local saved_distro="${LRM_DISTRO:-}"
+    local saved_key="${LRM_DISTRO_KEY:-}"
+
+    legacy_mirror="$LRM_STATE_DIR/mirrors"
+    legacy_default="$LRM_STATE_DIR/default"
+    legacy_health="$LRM_STATE_DIR/health"
+
+    host_spec="$(detect_host_distro_spec)"
+    [[ "$host_spec" != unknown ]] || return 0
+    parse_distro_spec "$host_spec"
+    host_key="$(distro_spec_to_state_key "$LRM_DISTRO_ID" "$LRM_RELEASE")"
+    LRM_DISTRO_ID="$saved_id"
+    LRM_RELEASE="$saved_release"
+    LRM_DISTRO="$saved_distro"
+    LRM_DISTRO_KEY="$saved_key"
+    [[ "$key" == "$host_key" ]] || return 0
+
+    if [[ -f "$legacy_mirror" && ! -f "$MIRROR_FILE" ]]; then
+        cp -a "$legacy_mirror" "$MIRROR_FILE"
+        migrated=1
+    fi
+    if [[ -f "$legacy_default" && ! -f "$DEFAULT_FILE" ]]; then
+        cp -a "$legacy_default" "$DEFAULT_FILE"
+        migrated=1
+    fi
+    if [[ -f "$legacy_health" && ! -f "$HEALTH_FILE" ]]; then
+        cp -a "$legacy_health" "$HEALTH_FILE"
+        migrated=1
+    fi
+
+    if [[ "$key" == */* ]]; then
+        legacy_dir="${key%%/*}"
+        if [[ -f "$LRM_STATE_DIR/$legacy_dir/mirrors" && ! -f "$MIRROR_FILE" ]]; then
+            cp -a "$LRM_STATE_DIR/$legacy_dir/mirrors" "$MIRROR_FILE"
+            migrated=1
+        fi
+        if [[ -f "$LRM_STATE_DIR/$legacy_dir/default" && ! -f "$DEFAULT_FILE" ]]; then
+            cp -a "$LRM_STATE_DIR/$legacy_dir/default" "$DEFAULT_FILE"
+            migrated=1
+        fi
+        if [[ -f "$LRM_STATE_DIR/$legacy_dir/health" && ! -f "$HEALTH_FILE" ]]; then
+            cp -a "$LRM_STATE_DIR/$legacy_dir/health" "$HEALTH_FILE"
+            migrated=1
+        fi
+    fi
+
+    if ((migrated)); then
+        rm -f "$legacy_mirror" "$legacy_default" "$legacy_health"
+        if [[ "$key" == */* ]]; then
+            legacy_dir="${key%%/*}"
+            rmdir "$LRM_STATE_DIR/$legacy_dir" 2>/dev/null || true
+        fi
+        vlog2 "migrated legacy state into $LRM_STATE_DIR/$key/"
+    fi
+}
+
+lrm_set_distro_state() {
+    local key="${LRM_DISTRO_KEY:-${LRM_DISTRO:?}}"
+
+    [[ -n "${LRM_STATE_DIR:-}" ]] || die "$(_ 'internal error: call init_lrm before load_distro_backend')"
+
+    MIRROR_FILE="$LRM_STATE_DIR/$key/mirrors"
+    DEFAULT_FILE="$LRM_STATE_DIR/$key/default"
+    HEALTH_FILE="$LRM_STATE_DIR/$key/health"
+    PREFERRED_FILE="$LRM_STATE_DIR/$key/preferred"
+    mkdir -p "$LRM_STATE_DIR/$key"
+    _lrm_migrate_legacy_state "$key"
+    invalidate_mirrors_cache
+    unset HEALTH_LOADED
+    vlog2 "distro state: $LRM_STATE_DIR/$key/"
+}
+
+ensure_state_paths() {
+    if [[ -n "${MIRROR_FILE:-}" ]]; then
+        return 0
+    fi
+    [[ -n "${LRM_DISTRO_ID:-}${LRM_DISTRO:-}" && -n "${LRM_STATE_DIR:-}" ]] || \
+        die "$(_ 'internal error: call init_lrm and load_distro_backend before mirror commands')"
+    lrm_set_distro_state
+}
+
+# Prefer legacy LRM_* env overrides when set.
+GETBAR="${LRM_GETBAR:-$GETBAR}"
+GETBAR_OPTS="${LRM_GETBAR_OPTS:-$GETBAR_OPTS}"
+BWTEST_REF_BYTES="${LRM_BWTEST_REF_BYTES:-$BWTEST_REF_BYTES}"
 
 VERBOSE=0
 QUIET=0
 LRM_DISTRO=""
 LRM_CONFIG_ONLY=0
-LRM_LIST_PRIORITY=0
-LRM_LIST_CHAR=0
-LRM_PING_COUNT=3
-LRM_PING_TIMEOUT=2
+LIST_PRIORITY=0
+LIST_CHAR=0
+PING_COUNT=3
+PING_TIMEOUT=2
+
+usage() {
+    cat <<EOF
+$(_ 'Usage: lrm [OPTION]... COMMAND [ARGS]...')
+
+$(_ 'Manage distribution package mirrors and select the fastest one.')
+
+$(_ 'Options:')
+$(_ '  -v, --verbose      more logging (repeatable: -v tests, -vv paths, -vvv metrics, -vvvv trace)')
+$(_ '  -q, --quiet        less logging')
+$(_ '  -o, --distro SPEC  target distribution[:release] (default: detect from host)')
+$(_ '                     e.g. debian:bookworm, ubuntu:focal, centos:7')
+$(_ '  -l, --list-distros list supported distribution names')
+$(_ '  -h, --help         show this help')
+$(_ '      --version      show version')
+
+$(_ 'Commands:')
+$(_ '  list [-c|--char] [-p|--priority]')
+$(_ '                     list mirrors: MARK [N] ALIAS (emoji default; -c: * in use, x failed, + fastest, v ok, ? untested)')
+$(_ '  add [[-PRIORITY] | -p|--priority N] ALIAS URL')
+$(_ '                     add or update a mirror (default priority 100)')
+$(_ '  remove ALIAS|NUM   remove a mirror')
+$(_ '  use [-c|--config-only] [apply opts] ALIAS|NUM')
+$(_ '                     Debian: [-a|--all] [-s|--src] [-u|--updates] [-b|--backports]')
+$(_ '                     [--security] [--suite SUITE]')
+$(_ '                     RPM: [-e|--everything] [-E|--epel] [-a|--all] [--releasever VER]')
+$(_ '                     [--arch ARCH] [--appstream] [--crb|--powertools] [--minimal]')
+$(_ '                     apply mirror (Debian default: all components; RPM default: BaseOS)')
+$(_ '  pingtest [-n|--count N] [-W|--timeout SEC]')
+$(_ '                     ping all mirrors; list by latency')
+$(_ '  bwtest [--ref BYTES]')
+$(_ '                     download test on all mirrors; list by score')
+$(_ '  pingsel [apply opts] [-n|--count N] [-W|--timeout SEC]')
+$(_ '                     pingtest then use the best mirror')
+$(_ '  bwsel [apply opts] [--ref BYTES]')
+$(_ '                     bwtest then use the best mirror')
+$(_ '  help               show this help')
+$(_ '  version            show version')
+EOF
+}
 
 version() {
-    printf '%s %s\n' "$LRM_NAME" "$LRM_VERSION"
+    printf '%s %s\n' "$TOOL_NAME" "$LRM_VERSION"
 }
 
 cmd_list() {
-    LRM_LIST_PRIORITY=0
-    LRM_LIST_CHAR=0
+    LIST_PRIORITY=0
+    LIST_CHAR=0
     while [[ $# -gt 0 ]]; do
         case "$1" in
-        -p|--priority) LRM_LIST_PRIORITY=1; shift ;;
-        -c|--char) LRM_LIST_CHAR=1; shift ;;
+        -p|--priority) LIST_PRIORITY=1; shift ;;
+        -c|--char) LIST_CHAR=1; shift ;;
         -h|--help) usage; exit 0 ;;
         -*) die "$(_ 'usage: lrm list [-c|--char] [-p|--priority]')" ;;
         *) die "$(_ 'usage: lrm list [-c|--char] [-p|--priority]')" ;;
         esac
     done
-    export LRM_LIST_PRIORITY LRM_LIST_CHAR
+    export LIST_PRIORITY LIST_CHAR
     ensure_mirrors
     if ((${#MIRROR_ALIASES[@]} == 0)); then
         log "$(_ 'no mirrors configured')"
@@ -138,18 +281,18 @@ cmd_use() {
 }
 
 parse_pingtest_opts() {
-    LRM_PING_COUNT=3
-    LRM_PING_TIMEOUT=2
+    PING_COUNT=3
+    PING_TIMEOUT=2
     while [[ $# -gt 0 ]]; do
         case "$1" in
         -n|--count)
             [[ $# -ge 2 ]] || die "$(_ 'usage: lrm pingtest [-n|--count N] [-W|--timeout SEC]')"
-            LRM_PING_COUNT="$2"
+            PING_COUNT="$2"
             shift 2
             ;;
         -W|--timeout)
             [[ $# -ge 2 ]] || die "$(_ 'usage: lrm pingtest [-n|--count N] [-W|--timeout SEC]')"
-            LRM_PING_TIMEOUT="$2"
+            PING_TIMEOUT="$2"
             shift 2
             ;;
         -h|--help) usage; exit 0 ;;
@@ -157,7 +300,7 @@ parse_pingtest_opts() {
         *) die "$(_ 'usage: lrm pingtest [-n|--count N] [-W|--timeout SEC]')" ;;
         esac
     done
-    export LRM_PING_COUNT LRM_PING_TIMEOUT
+    export PING_COUNT PING_TIMEOUT
 }
 
 parse_bwtest_opts() {
@@ -165,7 +308,7 @@ parse_bwtest_opts() {
         case "$1" in
         --ref)
             [[ $# -ge 2 ]] || die "$(_ 'usage: lrm bwtest [--ref BYTES]')"
-            LRM_BWTEST_REF_BYTES="$2"
+            BWTEST_REF_BYTES="$2"
             shift 2
             ;;
         -h|--help) usage; exit 0 ;;
@@ -173,7 +316,7 @@ parse_bwtest_opts() {
         *) die "$(_ 'usage: lrm bwtest [--ref BYTES]')" ;;
         esac
     done
-    export LRM_BWTEST_REF_BYTES
+    export BWTEST_REF_BYTES
 }
 
 cmd_pingtest() {

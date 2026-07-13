@@ -4,76 +4,134 @@
 
 set -euo pipefail
 
-DRM_NAME=drm
+TOOL_NAME=drm
 DRM_VERSION=@PROJECT_VERSION@
-DRM_TEXTDOMAIN=@DRM_TEXTDOMAIN@
-DRM_INSTALL_LOCALEDIR=@DRM_INSTALL_LOCALEDIR@
-DRM_SOURCE_LOCALEDIR=@DRM_SOURCE_LOCALEDIR@
-DRM_BUILD_LOCALEDIR=@DRM_BUILD_LOCALEDIR@
+TEXTDOMAIN=@DRM_TEXTDOMAIN@
+INSTALL_LOCALEDIR=@DRM_INSTALL_LOCALEDIR@
+SOURCE_LOCALEDIR=@DRM_SOURCE_LOCALEDIR@
+BUILD_LOCALEDIR=@DRM_BUILD_LOCALEDIR@
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [[ -f "$SCRIPT_DIR/lib-drm/common.sh" ]]; then
-    LIB_DIR="$SCRIPT_DIR/lib-drm"
-elif [[ -n "${DRM_LIB_DIR:-}" ]]; then
-    LIB_DIR="$DRM_LIB_DIR"
+SHARE_DIR=""
+if [[ -f "$SCRIPT_DIR/share/common.sh" ]]; then
+    SHARE_DIR="$SCRIPT_DIR/share"
+elif [[ -n "${REPOMAN_SHARE_DIR:-}" ]]; then
+    SHARE_DIR="$REPOMAN_SHARE_DIR"
 else
     for candidate in \
-        "/usr/share/repoman/drm/lib" \
-        "/usr/local/share/repoman/drm/lib"; do
+        "/usr/share/repoman" \
+        "/usr/local/share/repoman"; do
         if [[ -f "$candidate/common.sh" ]]; then
-            LIB_DIR="$candidate"
+            SHARE_DIR="$candidate"
             break
         fi
     done
 fi
 
-if [[ -z "${LIB_DIR:-}" && -f "$SCRIPT_DIR/../lib-drm/common.sh" ]]; then
-    LIB_DIR="$(cd "$SCRIPT_DIR/../lib-drm" && pwd)"
+# Meson out-of-tree build: build/drm with share/ at source root.
+if [[ -z "$SHARE_DIR" && -f "$SCRIPT_DIR/../share/common.sh" ]]; then
+    SHARE_DIR="$(cd "$SCRIPT_DIR/../share" && pwd)"
 fi
 
-if [[ -z "${LIB_DIR:-}" || ! -f "$LIB_DIR/common.sh" ]]; then
-    printf '%s: %s\n' "$DRM_NAME" "could not find drm library scripts" >&2
+if [[ -z "${SHARE_DIR:-}" || ! -f "$SHARE_DIR/common.sh" ]]; then
+    printf '%s: %s\n' "$TOOL_NAME" "could not find drm library scripts" >&2
     exit 1
 fi
 
-# shellcheck source=lib-drm/i18n.sh
-source "$LIB_DIR/i18n.sh"
-# shellcheck source=lib-drm/logstyle.sh
-source "$LIB_DIR/logstyle.sh"
-# shellcheck source=lib-drm/common.sh
-source "$LIB_DIR/common.sh"
-# shellcheck source=lib-drm/seed.sh
-source "$LIB_DIR/seed.sh"
-# shellcheck source=lib-drm/docker.sh
-source "$LIB_DIR/docker.sh"
-# shellcheck source=lib-drm/usage.sh
-source "$LIB_DIR/usage.sh"
+# shellcheck source=share/i18n.sh
+source "$SHARE_DIR/i18n.sh"
+# shellcheck source=share/logstyle.sh
+source "$SHARE_DIR/logstyle.sh"
+# shellcheck source=share/common.sh
+source "$SHARE_DIR/common.sh"
+# shellcheck source=share/seed/drm.sh
+source "$SHARE_DIR/seed/drm.sh"
+# shellcheck source=share/var/docker.sh
+source "$SHARE_DIR/var/docker.sh"
+
+init_drm() {
+    if [[ -n "${DRM_STATE_DIR:-}" ]]; then
+        :
+    elif [[ -n "${XDG_CONFIG_HOME:-}" ]]; then
+        DRM_STATE_DIR="$XDG_CONFIG_HOME/repoman/drm"
+    else
+        DRM_STATE_DIR="$HOME/.config/repoman/drm"
+    fi
+    MIRROR_FILE="$DRM_STATE_DIR/mirrors"
+    DEFAULT_FILE="$DRM_STATE_DIR/default"
+    HEALTH_FILE="$DRM_STATE_DIR/health"
+    PREFERRED_FILE="$DRM_STATE_DIR/preferred"
+    mkdir -p "$DRM_STATE_DIR"
+    vlog2 "state directory: $DRM_STATE_DIR"
+}
+
+ensure_state_paths() {
+    [[ -n "${MIRROR_FILE:-}" ]] || \
+        die "$(_ 'internal error: call init_drm before mirror commands')"
+}
+
+GETBAR="${DRM_GETBAR:-$GETBAR}"
+GETBAR_OPTS="${DRM_GETBAR_OPTS:-$GETBAR_OPTS}"
+BWTEST_REF_BYTES="${DRM_BWTEST_REF_BYTES:-$BWTEST_REF_BYTES}"
 
 VERBOSE=0
 QUIET=0
 DRM_CONFIG_ONLY=0
-DRM_LIST_PRIORITY=0
-DRM_LIST_CHAR=0
-DRM_PING_COUNT=3
-DRM_PING_TIMEOUT=2
+LIST_PRIORITY=0
+LIST_CHAR=0
+PING_COUNT=3
+PING_TIMEOUT=2
+
+usage() {
+    cat <<EOF
+$(_ 'Usage: drm [OPTION]... COMMAND [ARGS]...')
+
+$(_ 'Manage Docker registry mirrors and select the fastest one.')
+
+$(_ 'Options:')
+$(_ '  -v, --verbose      more logging (repeatable: -v tests, -vv paths, -vvv metrics, -vvvv trace)')
+$(_ '  -q, --quiet        less logging')
+$(_ '  -h, --help         show this help')
+$(_ '      --version      show version')
+
+$(_ 'Commands:')
+$(_ '  list [-c|--char] [-p|--priority]')
+$(_ '                     list mirrors: MARK [N] ALIAS (emoji default; -c: * in use, x failed, + fastest, v ok, ? untested)')
+$(_ '  add [[-PRIORITY] | -p|--priority N] ALIAS URL')
+$(_ '                     add or update a registry mirror (default priority 100)')
+$(_ '  remove ALIAS|NUM   remove a mirror')
+$(_ '  use [-c|--config-only] ALIAS|NUM')
+$(_ '                     set registry-mirrors in /etc/docker/daemon.json')
+$(_ '  pingtest [-n|--count N] [-W|--timeout SEC]')
+$(_ '                     ping all mirrors; list by latency')
+$(_ '  bwtest [--ref BYTES]')
+$(_ '                     download test on all mirrors; list by score')
+$(_ '  pingsel [-c|--config-only] [-n|--count N] [-W|--timeout SEC]')
+$(_ '                     pingtest then use the best mirror')
+$(_ '  bwsel [-c|--config-only] [--ref BYTES]')
+$(_ '                     bwtest then use the best mirror')
+$(_ '  help               show this help')
+$(_ '  version            show version')
+EOF
+}
 
 version() {
-    printf '%s %s\n' "$DRM_NAME" "$DRM_VERSION"
+    printf '%s %s\n' "$TOOL_NAME" "$DRM_VERSION"
 }
 
 cmd_list() {
-    DRM_LIST_PRIORITY=0
-    DRM_LIST_CHAR=0
+    LIST_PRIORITY=0
+    LIST_CHAR=0
     while [[ $# -gt 0 ]]; do
         case "$1" in
-        -p|--priority) DRM_LIST_PRIORITY=1; shift ;;
-        -c|--char) DRM_LIST_CHAR=1; shift ;;
+        -p|--priority) LIST_PRIORITY=1; shift ;;
+        -c|--char) LIST_CHAR=1; shift ;;
         -h|--help) usage; exit 0 ;;
         -*) die "$(_ 'usage: drm list [-c|--char] [-p|--priority]')" ;;
         *) die "$(_ 'usage: drm list [-c|--char] [-p|--priority]')" ;;
         esac
     done
-    export DRM_LIST_PRIORITY DRM_LIST_CHAR
+    export LIST_PRIORITY LIST_CHAR
     ensure_mirrors
     if ((${#MIRROR_ALIASES[@]} == 0)); then
         log "$(_ 'no mirrors configured')"
@@ -136,18 +194,18 @@ cmd_use() {
 }
 
 parse_pingtest_opts() {
-    DRM_PING_COUNT=3
-    DRM_PING_TIMEOUT=2
+    PING_COUNT=3
+    PING_TIMEOUT=2
     while [[ $# -gt 0 ]]; do
         case "$1" in
         -n|--count)
             [[ $# -ge 2 ]] || die "$(_ 'usage: drm pingtest [-n|--count N] [-W|--timeout SEC]')"
-            DRM_PING_COUNT="$2"
+            PING_COUNT="$2"
             shift 2
             ;;
         -W|--timeout)
             [[ $# -ge 2 ]] || die "$(_ 'usage: drm pingtest [-n|--count N] [-W|--timeout SEC]')"
-            DRM_PING_TIMEOUT="$2"
+            PING_TIMEOUT="$2"
             shift 2
             ;;
         -h|--help) usage; exit 0 ;;
@@ -155,7 +213,7 @@ parse_pingtest_opts() {
         *) die "$(_ 'usage: drm pingtest [-n|--count N] [-W|--timeout SEC]')" ;;
         esac
     done
-    export DRM_PING_COUNT DRM_PING_TIMEOUT
+    export PING_COUNT PING_TIMEOUT
 }
 
 parse_bwtest_opts() {
@@ -163,7 +221,7 @@ parse_bwtest_opts() {
         case "$1" in
         --ref)
             [[ $# -ge 2 ]] || die "$(_ 'usage: drm bwtest [--ref BYTES]')"
-            DRM_BWTEST_REF_BYTES="$2"
+            BWTEST_REF_BYTES="$2"
             shift 2
             ;;
         -h|--help) usage; exit 0 ;;
@@ -171,7 +229,7 @@ parse_bwtest_opts() {
         *) die "$(_ 'usage: drm bwtest [--ref BYTES]')" ;;
         esac
     done
-    export DRM_BWTEST_REF_BYTES
+    export BWTEST_REF_BYTES
 }
 
 cmd_pingtest() {
