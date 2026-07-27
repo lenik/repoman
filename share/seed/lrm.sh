@@ -4,8 +4,10 @@
 
 debian_release_archived() {
     local release="${1,,}"
+    # bullseye remains on regular mirrors (incl. debian-security); only fully
+    # retired suites use the debian-archive profile.
     case "$release" in
-    bullseye|buster|stretch|jessie|wheezy|squeeze|etch|sarge|woody|potato|hamm)
+    buster|stretch|jessie|wheezy|squeeze|etch|sarge|woody|potato|hamm)
         return 0
         ;;
     esac
@@ -97,12 +99,10 @@ seed_builtin_mirrors() {
         ;;
     debian-archive)
         # China mirrors nest the archive under …/debian-archive/debian (same layout
-        # as archive.debian.org/debian).
+        # as archive.debian.org/debian). Skip mirrors that do not carry stretch+.
         mirror_add archive 10 http://archive.debian.org/debian
-        mirror_add tuna 20 https://mirrors.tuna.tsinghua.edu.cn/debian-archive/debian
         mirror_add 163 25 https://mirrors.163.com/debian-archive/debian
         mirror_add aliyun 30 https://mirrors.aliyun.com/debian-archive/debian
-        mirror_add ustc 35 https://mirrors.ustc.edu.cn/debian-archive/debian
         mirror_add huawei 40 https://mirrors.huaweicloud.com/debian-archive/debian
         ;;
     ubuntu)
