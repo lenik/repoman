@@ -33,7 +33,12 @@ debian_security_mirror_url() {
         return 0
     fi
     if [[ "$url" == *debian-archive* ]]; then
-        printf '%s/debian-security\n' "$url"
+        # …/debian-archive/debian → …/debian-archive/debian-security
+        if [[ "$url" == */debian ]]; then
+            printf '%s\n' "${url%/debian}/debian-security"
+        else
+            printf '%s/debian-security\n' "$url"
+        fi
         return 0
     fi
     if [[ "$url" == */debian ]]; then
@@ -231,6 +236,14 @@ render_mirror_config() {
     local -a suites=("$suite")
     local suites_str sec_url
 
+    # non-free-firmware exists only from bookworm onward.
+    case "$suite" in
+    stretch|buster|bullseye|jessie|wheezy|squeeze)
+        components="$(printf '%s\n' $components | tr ' ' '\n' | grep -v '^non-free-firmware$' | tr '\n' ' ')"
+        components="${components% }"
+        ;;
+    esac
+
     if [[ "${LRM_DEB_SRC:-0}" -eq 1 ]]; then
         types="deb deb-src"
     fi
@@ -250,7 +263,14 @@ EOF
 
     if [[ "${LRM_DEB_SECURITY:-0}" -eq 1 ]]; then
         sec_url="$(debian_security_mirror_url "$url")"
-        _render_debian_stanza "$types" "$sec_url" "${suite}-security" "$components" "$outpath"
+        case "$suite" in
+        stretch|buster|jessie|wheezy|squeeze)
+            _render_debian_stanza "$types" "$sec_url" "${suite}/updates" "$components" "$outpath"
+            ;;
+        *)
+            _render_debian_stanza "$types" "$sec_url" "${suite}-security" "$components" "$outpath"
+            ;;
+        esac
     fi
 }
 

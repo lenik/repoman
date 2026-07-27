@@ -96,12 +96,14 @@ seed_builtin_mirrors() {
         mirror_add kernel 50 https://mirrors.kernel.org/debian
         ;;
     debian-archive)
+        # China mirrors nest the archive under …/debian-archive/debian (same layout
+        # as archive.debian.org/debian).
         mirror_add archive 10 http://archive.debian.org/debian
-        mirror_add tuna 20 https://mirrors.tuna.tsinghua.edu.cn/debian-archive
-        mirror_add 163 25 https://mirrors.163.com/debian-archive
-        mirror_add aliyun 30 https://mirrors.aliyun.com/debian-archive
-        mirror_add ustc 35 https://mirrors.ustc.edu.cn/debian-archive
-        mirror_add huawei 40 https://mirrors.huaweicloud.com/debian-archive
+        mirror_add tuna 20 https://mirrors.tuna.tsinghua.edu.cn/debian-archive/debian
+        mirror_add 163 25 https://mirrors.163.com/debian-archive/debian
+        mirror_add aliyun 30 https://mirrors.aliyun.com/debian-archive/debian
+        mirror_add ustc 35 https://mirrors.ustc.edu.cn/debian-archive/debian
+        mirror_add huawei 40 https://mirrors.huaweicloud.com/debian-archive/debian
         ;;
     ubuntu)
         mirror_add ubuntu 10 http://archive.ubuntu.com/ubuntu
