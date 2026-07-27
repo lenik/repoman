@@ -125,9 +125,10 @@ if meson_has_strip_dir
     )
 else
     # Meson < 0.45: install share/* directly under pkgdatadir via script.
+    # Bake source dir into the script (MESON_SOURCE_ROOT is not reliable on 0.37).
     meson.add_install_script(
         'sh', '-c',
-        'mkdir -p "$DESTDIR' + pkgdatadir + '" && cp -a "$MESON_SOURCE_ROOT/share/." "$DESTDIR' + pkgdatadir + '/"',
+        'd="${DESTDIR}' + pkgdatadir + '"; mkdir -p "$d"; cp -a "' + join_paths(meson.current_source_dir(), 'share') + '/." "$d/"; chmod -R a+rX "$d"; chmod a+x "${DESTDIR}' + bindir + '/lrm" "${DESTDIR}' + bindir + '/drm"',
     )
 endif
 
