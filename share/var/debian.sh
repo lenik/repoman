@@ -24,6 +24,11 @@ detect_debian_suite() {
 
 debian_security_mirror_url() {
     local url="${1%/}"
+    if [[ "$url" == *debian-elts* || "$url" == *extended-lts* ]]; then
+        # Freexian ELTS publishes security in the same tree (no separate -security).
+        printf '%s\n' "$url"
+        return 0
+    fi
     if [[ "$url" == *archive.debian.org* ]]; then
         if [[ "$url" == */debian ]]; then
             printf '%s-security\n' "$url"
@@ -235,6 +240,11 @@ render_mirror_config() {
     local types="deb"
     local -a suites=("$suite")
     local suites_str sec_url
+    local is_elts=0
+
+    if [[ "$url" == *debian-elts* || "$url" == *extended-lts* ]]; then
+        is_elts=1
+    fi
 
     # non-free-firmware exists only from bookworm onward.
     case "$suite" in
@@ -247,11 +257,14 @@ render_mirror_config() {
     if [[ "${LRM_DEB_SRC:-0}" -eq 1 ]]; then
         types="deb deb-src"
     fi
-    if [[ "${LRM_DEB_UPDATES:-0}" -eq 1 ]]; then
-        suites+=("${suite}-updates")
-    fi
-    if [[ "${LRM_DEB_BACKPORTS:-0}" -eq 1 ]]; then
-        suites+=("${suite}-backports")
+    # ELTS trees only publish the main suite Release (no -updates / -security pockets).
+    if [[ "$is_elts" -eq 0 ]]; then
+        if [[ "${LRM_DEB_UPDATES:-0}" -eq 1 ]]; then
+            suites+=("${suite}-updates")
+        fi
+        if [[ "${LRM_DEB_BACKPORTS:-0}" -eq 1 ]]; then
+            suites+=("${suite}-backports")
+        fi
     fi
     suites_str="${suites[*]}"
 
@@ -261,7 +274,7 @@ EOF
 
     _render_debian_stanza "$types" "$url" "$suites_str" "$components" "$outpath"
 
-    if [[ "${LRM_DEB_SECURITY:-0}" -eq 1 ]]; then
+    if [[ "$is_elts" -eq 0 && "${LRM_DEB_SECURITY:-0}" -eq 1 ]]; then
         sec_url="$(debian_security_mirror_url "$url")"
         case "$suite" in
         stretch|buster|jessie|wheezy|squeeze)
