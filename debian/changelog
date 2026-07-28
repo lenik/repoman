@@ -1,3 +1,17 @@
+repoman (1.4.1) testing; urgency=medium
+
+  * Improve archived/EOL mirror seeding for China and upstream archives:
+    - Ubuntu: keep trusty–focal on regular /ubuntu/ mirrors; reserve
+      ubuntu-old for suites only on old-releases; nest CN paths as
+      …/ubuntu-old-releases/ubuntu.
+    - Debian: add debian-elts profile (tuna + Freexian) for jessie/stretch/
+      buster; keep debian-archive for older suites; skip ELTS pocket
+      updates/security that do not exist on those trees.
+    - CentOS: vault apply/probe use 5.11/6.10/7.9.2009/8.5.2111 layouts;
+      Stream apply writes N-stream/ paths; drop broken 163 centos-stream seed.
+
+ -- Lenik (谢继雷) <lenik@bodz.net>  Tue, 28 Jul 2026 17:55:00 +0800
+
 repoman (1.4.0) testing; urgency=medium
 
   * Merge lib/ and lib-drm/ into share/; extract shared i18n, logging, and

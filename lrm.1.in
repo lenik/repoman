@@ -57,8 +57,23 @@ is
 or
 .IR NAME : RELEASE
 (for example
-.BR debian:bookworm ", " ubuntu:focal ", " centos:7 ).
-Archived releases automatically use archive or vault mirror URLs.
+.BR debian:bookworm ", " ubuntu:jammy ", " centos:7 ).
+Archived or vaulted releases automatically switch mirror profiles:
+.BR debian-elts
+(jessie/stretch/buster; Freexian + tuna),
+.BR debian-archive
+(older Debian),
+.BR ubuntu-old
+(interim/old Ubuntu only on old-releases; EOL LTS such as
+.BR focal / bionic
+still use regular
+.B /ubuntu/
+mirrors),
+.BR centos-vault
+(CentOS 5–8 under
+.BR centos-vault
+paths such as
+.BR 7.9.2009 ).
 Examples:
 .BR debian ", " ubuntu ", " fedora ", " uos ", " deepin ", " kylin ", " openeuler ", " arch ", " rpm .
 Use
