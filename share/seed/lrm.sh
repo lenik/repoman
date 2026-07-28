@@ -5,7 +5,7 @@
 debian_release_archived() {
     local release="${1,,}"
     # bullseye remains on regular mirrors (incl. debian-security); only fully
-    # retired suites use the debian-archive profile.
+    # retired suites use the debian-archive / debian-elts profiles.
     case "$release" in
     buster|stretch|jessie|wheezy|squeeze|etch|sarge|woody|potato|hamm)
         return 0
@@ -14,12 +14,28 @@ debian_release_archived() {
     return 1
 }
 
+# Suites with Freexian Extended LTS trees on debian-elts mirrors.
+debian_release_elts() {
+    local release="${1,,}"
+    case "$release" in
+    buster|stretch|jessie)
+        return 0
+        ;;
+    esac
+    return 1
+}
+
+# Suites that only exist on old-releases.ubuntu.com (not archive.ubuntu.com
+# or China /ubuntu/ mirrors). LTS such as trusty–focal still live under /ubuntu/.
 ubuntu_release_archived() {
     local release="${1,,}"
     case "$release" in
-    trusty|xenial|bionic|focal|yoga|zesty|artful|cosmic|disco|eoan|groovy|hirsute|impish| \
-    kinetic|lunar|mantic| \
-    14.04|16.04|18.04|20.04|17.04|17.10|18.10|19.04|19.10|20.10|21.04|21.10|22.10|23.04|23.10|24.10)
+    # Interim / very old — present on old-releases, absent from archive.ubuntu.com.
+    yakkety|zesty|artful|cosmic|disco|eoan|groovy|hirsute|impish| \
+    kinetic|lunar|mantic|oracular| \
+    precise|quantal|raring|saucy|utopic|vivid|wily| \
+    12.04|12.10|13.04|13.10|15.04|15.10|17.04|17.10|18.10|19.04|19.10| \
+    20.10|21.04|21.10|22.10|23.04|23.10|24.10)
         return 0
         ;;
     esac
@@ -28,7 +44,19 @@ ubuntu_release_archived() {
 
 centos_release_vault() {
     local release="${1%%.*}"
-    [[ "$release" =~ ^[678]$ ]]
+    [[ "$release" =~ ^[5678]$ ]]
+}
+
+# Final vault directory segment for a CentOS major (under centos-vault / vault.centos.org).
+centos_vault_release_dir() {
+    local releasever="${1%%.*}"
+    case "$releasever" in
+    5) printf '5.11\n' ;;
+    6) printf '6.10\n' ;;
+    7) printf '7.9.2009\n' ;;
+    8) printf '8.5.2111\n' ;;
+    *) printf '%s\n' "$releasever" ;;
+    esac
 }
 
 release_seed_profile() {
@@ -38,7 +66,12 @@ release_seed_profile() {
     [[ -n "$release" ]] || return 1
     case "$profile" in
     debian)
-        debian_release_archived "$release" && printf 'debian-archive\n'
+        # Prefer debian-elts when available (CN tuna + Freexian); else archive.debian.org.
+        if debian_release_elts "$release"; then
+            printf 'debian-elts\n'
+        elif debian_release_archived "$release"; then
+            printf 'debian-archive\n'
+        fi
         ;;
     ubuntu)
         ubuntu_release_archived "$release" && printf 'ubuntu-old\n'
@@ -105,7 +138,19 @@ seed_builtin_mirrors() {
         mirror_add aliyun 30 https://mirrors.aliyun.com/debian-archive/debian
         mirror_add huawei 40 https://mirrors.huaweicloud.com/debian-archive/debian
         ;;
+    debian-elts)
+        # Freexian Extended LTS (jessie/stretch/buster). Also seed debian-archive
+        # so bwsel can fall back when elts is unreachable.
+        mirror_add freexian 10 https://deb.freexian.com/extended-lts
+        mirror_add tuna 20 https://mirrors.tuna.tsinghua.edu.cn/debian-elts
+        mirror_add archive 40 http://archive.debian.org/debian
+        mirror_add 163 45 https://mirrors.163.com/debian-archive/debian
+        mirror_add aliyun 50 https://mirrors.aliyun.com/debian-archive/debian
+        mirror_add huawei 55 https://mirrors.huaweicloud.com/debian-archive/debian
+        ;;
     ubuntu)
+        # Includes EOL LTS still hosted on archive.ubuntu.com and China /ubuntu/
+        # (trusty, xenial, bionic, focal, …). Do not force ubuntu-old for those.
         mirror_add ubuntu 10 http://archive.ubuntu.com/ubuntu
         mirror_add tuna 20 https://mirrors.tuna.tsinghua.edu.cn/ubuntu
         mirror_add 163 25 https://mirrors.163.com/ubuntu
@@ -115,12 +160,10 @@ seed_builtin_mirrors() {
         mirror_add kernel 50 https://mirrors.kernel.org/ubuntu
         ;;
     ubuntu-old)
+        # Nest …/ubuntu-old-releases/ubuntu like upstream old-releases.ubuntu.com/ubuntu.
+        # Many CN hosts lack this tree; keep ustc + upstream.
         mirror_add ubuntu 10 http://old-releases.ubuntu.com/ubuntu
-        mirror_add tuna 20 https://mirrors.tuna.tsinghua.edu.cn/ubuntu-old-releases
-        mirror_add 163 25 https://mirrors.163.com/ubuntu-old-releases
-        mirror_add aliyun 30 https://mirrors.aliyun.com/ubuntu-old-releases
-        mirror_add ustc 35 https://mirrors.ustc.edu.cn/ubuntu-old-releases
-        mirror_add huawei 40 https://mirrors.huaweicloud.com/ubuntu-old-releases
+        mirror_add ustc 20 https://mirrors.ustc.edu.cn/ubuntu-old-releases/ubuntu
         ;;
     kali)
         mirror_add kali 10 http://http.kali.org/kali
@@ -170,14 +213,15 @@ seed_builtin_mirrors() {
         mirror_add huawei 50 https://mirrors.huaweicloud.com/almalinux
         ;;
     centos)
-        mirror_add centos 10 https://mirrors.centos.org/centos
+        # CentOS Stream 9+. Prefer centos-stream trees; bare /centos/ is legacy.
+        mirror_add centos 10 https://mirrors.centos.org/centos-stream
         mirror_add tuna 20 https://mirrors.tuna.tsinghua.edu.cn/centos-stream
-        mirror_add 163 25 https://mirrors.163.com/centos-stream
         mirror_add aliyun 30 https://mirrors.aliyun.com/centos-stream
         mirror_add ustc 40 https://mirrors.ustc.edu.cn/centos-stream
         mirror_add huawei 50 https://mirrors.huaweicloud.com/centos-stream
         ;;
     centos-vault)
+        # EOL CentOS 5–8 live under centos-vault (not bare /centos/ on CN mirrors).
         mirror_add centos 10 https://vault.centos.org
         mirror_add tuna 20 https://mirrors.tuna.tsinghua.edu.cn/centos-vault
         mirror_add 163 25 https://mirrors.163.com/centos-vault
