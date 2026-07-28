@@ -101,7 +101,7 @@ mirror_probe_url() {
     local base="${1%/}"
     local releasever="${LRM_RELEASEVER:-$(detect_rpm_releasever)}"
     local basearch="${LRM_ARCH:-$(detect_rpm_basearch)}"
-    local profile
+    local profile vault_dir
     profile="$(distro_seed_profile "${LRM_DISTRO:-rpm}")"
 
     case "$profile" in
@@ -115,25 +115,21 @@ mirror_probe_url() {
         ;;
     centos)
         if centos_release_vault "${LRM_RELEASEVER:-$(detect_rpm_releasever)}"; then
-            releasever="${LRM_RELEASEVER:-$(detect_rpm_releasever)}"
-            releasever="${releasever%%.*}"
-            case "$releasever" in
-            7)
-                printf '%s/7.9.2009/os/%s/repodata/repomd.xml\n' \
-                    "$base" "$basearch"
-                ;;
+            vault_dir="$(centos_vault_release_dir "${LRM_RELEASEVER:-$(detect_rpm_releasever)}")"
+            case "${vault_dir%%.*}" in
             8)
-                printf '%s/8-stream/BaseOS/%s/os/repodata/repomd.xml\n' \
-                    "$base" "$basearch"
+                printf '%s/%s/BaseOS/%s/os/repodata/repomd.xml\n' \
+                    "$base" "$vault_dir" "$basearch"
                 ;;
             *)
+                # CentOS 5–7 vault layout: …/<rel>/os/$arch/
                 printf '%s/%s/os/%s/repodata/repomd.xml\n' \
-                    "$base" "$releasever" "$basearch"
+                    "$base" "$vault_dir" "$basearch"
                 ;;
             esac
         else
             printf '%s/%s-stream/BaseOS/%s/os/repodata/repomd.xml\n' \
-                "$base" "$releasever" "$basearch"
+                "$base" "${releasever%%.*}" "$basearch"
         fi
         ;;
     ol)
@@ -156,31 +152,99 @@ render_mirror_config() {
     local outpath="$2"
     local releasever="${LRM_RELEASEVER:-$(detect_rpm_releasever)}"
     local basearch="${LRM_ARCH:-$(detect_rpm_basearch)}"
-    local crb_repo epel_url
+    local crb_repo epel_url vault_dir major
+    local distro_id="${LRM_DISTRO_ID:-${LRM_DISTRO:-rpm}}"
+    local profile rel_path
 
+    distro_id="${distro_id%%:*}"
+    distro_id="${distro_id,,}"
+    profile="$(distro_seed_profile "$distro_id")"
     crb_repo="$(rpm_crb_repo_name "$releasever")"
     : >"$outpath"
     printf '# Managed by lrm — do not edit by hand.\n\n' >>"$outpath"
+
+    # CentOS vault (5–8): final point-release dirs under centos-vault / vault.centos.org.
+    if [[ "$profile" == centos ]] && centos_release_vault "$releasever"; then
+        vault_dir="$(centos_vault_release_dir "$releasever")"
+        major="${vault_dir%%.*}"
+        case "$major" in
+        5|6|7)
+            if [[ "${LRM_RPM_BASEOS:-1}" -eq 1 ]]; then
+                _rpm_append_repo \
+                    lrm-baseos \
+                    'lrm BaseOS' \
+                    "$url/$vault_dir/os/$basearch/" \
+                    "$outpath"
+            fi
+            if [[ "${LRM_RPM_APPSTREAM:-0}" -eq 1 && "$major" == "7" ]]; then
+                _rpm_append_repo \
+                    lrm-updates \
+                    'lrm Updates' \
+                    "$url/$vault_dir/updates/$basearch/" \
+                    "$outpath"
+            fi
+            ;;
+        8)
+            if [[ "${LRM_RPM_BASEOS:-1}" -eq 1 ]]; then
+                _rpm_append_repo \
+                    lrm-baseos \
+                    'lrm BaseOS' \
+                    "$url/$vault_dir/BaseOS/$basearch/os/" \
+                    "$outpath"
+            fi
+            if [[ "${LRM_RPM_APPSTREAM:-0}" -eq 1 ]]; then
+                _rpm_append_repo \
+                    lrm-appstream \
+                    'lrm AppStream' \
+                    "$url/$vault_dir/AppStream/$basearch/os/" \
+                    "$outpath"
+            fi
+            if [[ "${LRM_RPM_CRB:-0}" -eq 1 ]]; then
+                _rpm_append_repo \
+                    lrm-powertools \
+                    'lrm PowerTools' \
+                    "$url/$vault_dir/PowerTools/$basearch/os/" \
+                    "$outpath"
+            fi
+            ;;
+        esac
+        if [[ "${LRM_RPM_EPEL:-0}" -eq 1 ]]; then
+            epel_url="$(rpm_epel_mirror_url "$url")"
+            _rpm_append_repo \
+                lrm-epel \
+                'lrm EPEL' \
+                "$epel_url/$major/Everything/$basearch/" \
+                "$outpath"
+        fi
+        return 0
+    fi
+
+    # CentOS Stream 9+: …/N-stream/BaseOS/… ; Rocky/Alma/RHEL: …/N/BaseOS/…
+    if [[ "$profile" == centos ]]; then
+        rel_path="${releasever%%.*}-stream"
+    else
+        rel_path="$releasever"
+    fi
 
     if [[ "${LRM_RPM_BASEOS:-1}" -eq 1 ]]; then
         _rpm_append_repo \
             lrm-baseos \
             'lrm BaseOS' \
-            "$url/$releasever/BaseOS/$basearch/os/" \
+            "$url/$rel_path/BaseOS/$basearch/os/" \
             "$outpath"
     fi
     if [[ "${LRM_RPM_APPSTREAM:-0}" -eq 1 ]]; then
         _rpm_append_repo \
             lrm-appstream \
             'lrm AppStream' \
-            "$url/$releasever/AppStream/$basearch/os/" \
+            "$url/$rel_path/AppStream/$basearch/os/" \
             "$outpath"
     fi
     if [[ "${LRM_RPM_CRB:-0}" -eq 1 ]]; then
         _rpm_append_repo \
             "lrm-${crb_repo,,}" \
             "lrm $crb_repo" \
-            "$url/$releasever/$crb_repo/$basearch/os/" \
+            "$url/$rel_path/$crb_repo/$basearch/os/" \
             "$outpath"
     fi
     if [[ "${LRM_RPM_EPEL:-0}" -eq 1 ]]; then
@@ -188,7 +252,7 @@ render_mirror_config() {
         _rpm_append_repo \
             lrm-epel \
             'lrm EPEL' \
-            "$epel_url/$releasever/Everything/$basearch/" \
+            "$epel_url/${releasever%%.*}/Everything/$basearch/" \
             "$outpath"
     fi
 }
