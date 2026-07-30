@@ -17,6 +17,11 @@ readonly -a _LRM_RPM_DISTROS=(
     scilinux sl springdale tencentos uos-server uoseuler virtuozzo
 )
 
+# SUSE-family distros (zypper).
+readonly -a _LRM_SUSE_DISTROS=(
+    opensuse opensuse-leap opensuse-tumbleweed sled sles suse
+)
+
 # Arch-family distros (pacman).
 readonly -a _LRM_ARCH_DISTROS=(
     arch arcolinux archcraft artix blackarch cachyos endeavouros garuda hyperbola
@@ -27,6 +32,7 @@ readonly -a _LRM_ARCH_DISTROS=(
 LRM_SUPPORTED_DISTROS=(
     "${_LRM_DEBIAN_DISTROS[@]}"
     "${_LRM_RPM_DISTROS[@]}"
+    "${_LRM_SUSE_DISTROS[@]}"
     "${_LRM_ARCH_DISTROS[@]}"
     rpm
 )
@@ -51,6 +57,10 @@ _family_for_distro_id() {
         printf 'rpm\n'
         return 0
     fi
+    if _distro_in_list "$id" "${_LRM_SUSE_DISTROS[@]}"; then
+        printf 'suse\n'
+        return 0
+    fi
     if _distro_in_list "$id" "${_LRM_ARCH_DISTROS[@]}"; then
         printf 'arch\n'
         return 0
@@ -69,6 +79,9 @@ normalize_distro_name() {
     uos-server|uosserver|uniontech-server|uniontechos-server) printf 'uos-server\n' ;;
     rockylinux) printf 'rocky\n' ;;
     almalinux) printf 'alma\n' ;;
+    opensuse-leap|leap) printf 'opensuse\n' ;;
+    opensuse-tumbleweed|tumbleweed) printf 'opensuse-tumbleweed\n' ;;
+    suse-sle|sle) printf 'sles\n' ;;
     openeuler-os|open-euler) printf 'openeuler\n' ;;
     euler) printf 'euleros\n' ;;
     neokylin-linux|neokylinos) printf 'neokylin\n' ;;
@@ -188,6 +201,11 @@ apply_distro_release_vars() {
     rpm)
         if [[ -n "${LRM_RELEASE:-}" ]]; then
             LRM_RELEASEVER="${LRM_RELEASE%%.*}"
+        fi
+        ;;
+    suse)
+        if [[ -n "${LRM_RELEASE:-}" ]]; then
+            LRM_ZYPPER_RELEASE="$LRM_RELEASE"
         fi
         ;;
     esac
@@ -311,6 +329,11 @@ load_distro_backend_for() {
             # shellcheck source=share/var/rpm.sh
             source "$SHARE_DIR/var/rpm.sh"
             ;;
+        suse|sles|opensuse)
+            DISTRO_FAMILY=suse
+            # shellcheck source=share/var/zypper.sh
+            source "$SHARE_DIR/var/zypper.sh"
+            ;;
         arch)
             # shellcheck source=share/arch.sh
             source "$SHARE_DIR/arch.sh"
@@ -350,6 +373,7 @@ detect_distro_family() {
     case "$like" in
         *debian*) printf 'debian\n' ; return 0 ;;
         *rhel*|*fedora*|*centos*) printf 'rpm\n' ; return 0 ;;
+        *suse*|*opensuse*) printf 'suse\n' ; return 0 ;;
         *arch*) printf 'arch\n' ; return 0 ;;
     esac
 
