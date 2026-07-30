@@ -27,7 +27,7 @@ project_year = 2026
 
 meson_has_path_op = meson.version().version_compare('>=0.49.0')
 meson_has_fs = meson.version().version_compare('>=0.53.0')
-meson_has_project_source_root = meson.version().version_compare('>=0.50.0')
+meson_has_project_source_root = meson.version().version_compare('>=0.56.0')
 meson_has_strip_dir = meson.version().version_compare('>=0.45.0')
 meson_has_install_mode = meson.version().version_compare('>=0.38.0')
 
