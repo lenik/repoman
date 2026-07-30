@@ -46,6 +46,11 @@ debian_security_mirror_url() {
         fi
         return 0
     fi
+    # Ubuntu security is suite CODENAME-security in the same tree (not …/debian-security).
+    if [[ "$url" == */ubuntu || "$url" == */ubuntu-ports ]]; then
+        printf '%s\n' "$url"
+        return 0
+    fi
     if [[ "$url" == */debian ]]; then
         printf '%s-security\n' "$url"
         return 0
@@ -64,7 +69,15 @@ lrm_debian_apply_defaults() {
     LRM_DEB_UPDATES=1
     LRM_DEB_BACKPORTS=1
     LRM_DEB_SECURITY=1
-    LRM_DEB_COMPONENTS="main contrib non-free non-free-firmware"
+    # Ubuntu family uses restricted/universe/multiverse (not Debian contrib/non-free).
+    case "${LRM_DISTRO_ID:-debian}" in
+    ubuntu|ubuntukylin|pop|neon|linuxmint|elementary|zorin|peppermint|feren|voyager|bunsenlabs|mx|knoppix|siduction|sparky|gnuinos|avlinux)
+        LRM_DEB_COMPONENTS="main restricted universe multiverse"
+        ;;
+    *)
+        LRM_DEB_COMPONENTS="main contrib non-free non-free-firmware"
+        ;;
+    esac
 }
 
 lrm_debian_apply_minimal() {

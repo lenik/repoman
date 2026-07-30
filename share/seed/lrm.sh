@@ -109,6 +109,8 @@ distro_seed_profile() {
     rpm) printf 'rocky\n' ;;
     rhel|eurolinux|cloudlinux|virtuozzo|azurelinux|azl|mariner|cbl-mariner)
         printf 'rocky\n' ;;
+    sles|sled|suse|opensuse|opensuse-leap|opensuse-tumbleweed)
+        printf 'opensuse\n' ;;
     debian|antix|lmde|parrot|pureos|raspbian)
         printf 'debian\n' ;;
     *)
@@ -222,12 +224,13 @@ seed_builtin_mirrors() {
         ;;
     centos-vault)
         # EOL CentOS 5–8 live under centos-vault (not bare /centos/ on CN mirrors).
-        mirror_add centos 10 https://vault.centos.org
-        mirror_add tuna 20 https://mirrors.tuna.tsinghua.edu.cn/centos-vault
-        mirror_add 163 25 https://mirrors.163.com/centos-vault
-        mirror_add aliyun 30 https://mirrors.aliyun.com/centos-vault
-        mirror_add ustc 40 https://mirrors.ustc.edu.cn/centos-vault
-        mirror_add huawei 50 https://mirrors.huaweicloud.com/centos-vault
+        # Prefer HTTP: CentOS 5/6 cannot negotiate modern TLS.
+        mirror_add centos 10 http://vault.centos.org
+        mirror_add tuna 20 http://mirrors.tuna.tsinghua.edu.cn/centos-vault
+        mirror_add 163 25 http://mirrors.163.com/centos-vault
+        mirror_add aliyun 30 http://mirrors.aliyun.com/centos-vault
+        mirror_add ustc 40 http://mirrors.ustc.edu.cn/centos-vault
+        mirror_add huawei 50 http://mirrors.huaweicloud.com/centos-vault
         ;;
     openeuler)
         mirror_add openeuler 10 https://repo.openeuler.org
@@ -286,6 +289,14 @@ seed_builtin_mirrors() {
         mirror_add aliyun 30 https://mirrors.aliyun.com/archlinux
         mirror_add ustc 35 https://mirrors.ustc.edu.cn/archlinux
         mirror_add kernel 50 https://mirrors.kernel.org/archlinux
+        ;;
+    opensuse)
+        mirror_add opensuse 10 https://download.opensuse.org
+        mirror_add tuna 20 https://mirrors.tuna.tsinghua.edu.cn/opensuse
+        mirror_add 163 25 https://mirrors.163.com/opensuse
+        mirror_add aliyun 30 https://mirrors.aliyun.com/opensuse
+        mirror_add ustc 40 https://mirrors.ustc.edu.cn/opensuse
+        mirror_add huawei 50 https://mirrors.huaweicloud.com/opensuse
         ;;
     rpm)
         seed_builtin_mirrors rocky
